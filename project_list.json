@@ -1,0 +1,1574 @@
+﻿{
+  "projects": [
+    {
+      "createTime": "2026-02-08T06:28:43.306320Z",
+      "designTheme": {
+        "colorMode": "LIGHT",
+        "customColor": "#197fe6",
+        "font": "MANROPE",
+        "roundness": "ROUND_EIGHT",
+        "saturation": 2
+      },
+      "deviceType": "DESKTOP",
+      "metadata": {
+        "userRole": "OWNER"
+      },
+      "name": "projects/7310957326992624736",
+      "origin": "STITCH",
+      "projectType": "TEXT_TO_UI_PRO",
+      "screenInstances": [
+        {
+          "height": 1216,
+          "id": "16956dd228794fc7bfa207b2e309f534",
+          "sourceScreen": "projects/7310957326992624736/screens/16956dd228794fc7bfa207b2e309f534",
+          "width": 1280,
+          "x": 5376
+        },
+        {
+          "height": 1024,
+          "id": "32300c57d1b848a195a7d900ef40a311",
+          "sourceScreen": "projects/7310957326992624736/screens/32300c57d1b848a195a7d900ef40a311",
+          "width": 1280
+        },
+        {
+          "height": 1592,
+          "id": "385af2de1999437d95fa313e91f56dfb",
+          "sourceScreen": "projects/7310957326992624736/screens/385af2de1999437d95fa313e91f56dfb",
+          "width": 1280,
+          "x": 4032
+        },
+        {
+          "height": 1024,
+          "id": "3aae46c9bba44c2e9477a7ef6014e4b8",
+          "sourceScreen": "projects/7310957326992624736/screens/3aae46c9bba44c2e9477a7ef6014e4b8",
+          "width": 1280,
+          "x": 10752
+        },
+        {
+          "height": 2078,
+          "id": "4185d285bd13476d976ae5702ad12e47",
+          "sourceScreen": "projects/7310957326992624736/screens/4185d285bd13476d976ae5702ad12e47",
+          "width": 1280,
+          "x": 6720
+        },
+        {
+          "height": 1560,
+          "id": "45bac8bad3854fd38d8dcc0389ec62e5",
+          "sourceScreen": "projects/7310957326992624736/screens/45bac8bad3854fd38d8dcc0389ec62e5",
+          "width": 1280,
+          "x": 8064
+        },
+        {
+          "height": 1644,
+          "id": "7deeb88b51184c18bc0b15ac36118eac",
+          "sourceScreen": "projects/7310957326992624736/screens/7deeb88b51184c18bc0b15ac36118eac",
+          "width": 1280,
+          "x": 9408
+        },
+        {
+          "height": 3496,
+          "id": "87ce171d045748d0a3df120ca800337a",
+          "sourceScreen": "projects/7310957326992624736/screens/87ce171d045748d0a3df120ca800337a",
+          "width": 1280,
+          "x": 2688
+        },
+        {
+          "height": 1292,
+          "id": "92b6a0e0002a428a81ac7a8e37467bf1",
+          "sourceScreen": "projects/7310957326992624736/screens/92b6a0e0002a428a81ac7a8e37467bf1",
+          "width": 1280,
+          "x": 12096
+        },
+        {
+          "height": 2195,
+          "id": "c0b0fef1e6944020b29db4f1861dc6e9",
+          "sourceScreen": "projects/7310957326992624736/screens/c0b0fef1e6944020b29db4f1861dc6e9",
+          "width": 1280,
+          "x": 1344
+        }
+      ],
+      "thumbnailScreenshot": {
+        "downloadUrl": "https://lh3.googleusercontent.com/aida/AOfcidUXxlQ_kB9NMej-pbD4nbQn72JrNruSVKz_dIZqtYUjdKI4VgR7bV5veqinn2-rU2CAJJ92Oxu1ZcKO9E1KkxlV6OanEKpSM2Bba8lu_pi97FStrLXgZQFmbVnsy6oFedOdaYkDAwsZjlGst61Pu4t30CN9tbtPEfGk5om92g31927DacDLZjtkftRf-yq5m9D9UhBFnectlqQNtpW6ACVRIodHDMOA-WjuNfGbpwcUlWS0HZV5DpddE-0",
+        "name": "projects/7310957326992624736/files/cf991038edbc42fbbe4224422ba17242"
+      },
+      "title": "Candidate Home & Storytelling Landing",
+      "updateTime": "2026-02-08T06:34:34.095430Z",
+      "visibility": "PUBLIC"
+    },
+    {
+      "createTime": "2026-01-28T02:31:34.783020Z",
+      "designTheme": {
+        "colorMode": "LIGHT",
+        "customColor": "#2b8cee",
+        "font": "INTER",
+        "roundness": "ROUND_EIGHT",
+        "saturation": 2
+      },
+      "deviceType": "DESKTOP",
+      "metadata": {
+        "userRole": "OWNER"
+      },
+      "name": "projects/15482838516786912428",
+      "origin": "STITCH",
+      "projectType": "TEXT_TO_UI_PRO",
+      "screenInstances": [
+        {
+          "height": 1250,
+          "hidden": true,
+          "id": "0248b8f4f7d745d3856b080d9e01dc04",
+          "sourceScreen": "projects/15482838516786912428/screens/0248b8f4f7d745d3856b080d9e01dc04",
+          "width": 1280,
+          "x": 47478
+        },
+        {
+          "height": 1253,
+          "hidden": true,
+          "id": "0337c74064e3410abeaf8b907593704f",
+          "sourceScreen": "projects/15482838516786912428/screens/0337c74064e3410abeaf8b907593704f",
+          "width": 1280,
+          "x": 120054
+        },
+        {
+          "height": 760,
+          "id": "0569d10c-74e0-446e-b959-426ef4772470",
+          "sourceScreen": "projects/15482838516786912428/screens/9964093765872978181",
+          "width": 447
+        },
+        {
+          "height": 1024,
+          "id": "06b0ebc484ed4d3b9f7e99f8b1696d84",
+          "sourceScreen": "projects/15482838516786912428/screens/06b0ebc484ed4d3b9f7e99f8b1696d84",
+          "width": 1280,
+          "x": 4470
+        },
+        {
+          "height": 1024,
+          "hidden": true,
+          "id": "0e984bdd87214f93b8ba248bb010e8ef",
+          "sourceScreen": "projects/15482838516786912428/screens/0e984bdd87214f93b8ba248bb010e8ef",
+          "width": 1280,
+          "x": 67638
+        },
+        {
+          "height": 1308,
+          "hidden": true,
+          "id": "14a21dc5159c44f1984db6754d6de482",
+          "sourceScreen": "projects/15482838516786912428/screens/14a21dc5159c44f1984db6754d6de482",
+          "width": 1280,
+          "x": 105270
+        },
+        {
+          "height": 2784,
+          "hidden": true,
+          "id": "19c171ded1bb408e91c168afd145bb45",
+          "sourceScreen": "projects/15482838516786912428/screens/19c171ded1bb408e91c168afd145bb45",
+          "width": 1280,
+          "x": 91830
+        },
+        {
+          "height": 1919,
+          "hidden": true,
+          "id": "1a2c7e3bf2c44a1bbae3bf461149b51b",
+          "sourceScreen": "projects/15482838516786912428/screens/1a2c7e3bf2c44a1bbae3bf461149b51b",
+          "width": 1280,
+          "x": 60918
+        },
+        {
+          "height": 1712,
+          "hidden": true,
+          "id": "1e79a3a8a03045688fde80f11618e010",
+          "sourceScreen": "projects/15482838516786912428/screens/1e79a3a8a03045688fde80f11618e010",
+          "width": 1280,
+          "x": 114678
+        },
+        {
+          "height": 1565,
+          "hidden": true,
+          "id": "1fa90dc442464c818dd8171187c4975f",
+          "sourceScreen": "projects/15482838516786912428/screens/1fa90dc442464c818dd8171187c4975f",
+          "width": 1280,
+          "x": 64950
+        },
+        {
+          "height": 1344,
+          "id": "1fb018a174c647018a5d7605a5f5fa7a",
+          "sourceScreen": "projects/15482838516786912428/screens/1fb018a174c647018a5d7605a5f5fa7a",
+          "width": 1280,
+          "x": 13878
+        },
+        {
+          "height": 1024,
+          "hidden": true,
+          "id": "2339c822f53a4b7f8bec16e8e19759e7",
+          "sourceScreen": "projects/15482838516786912428/screens/2339c822f53a4b7f8bec16e8e19759e7",
+          "width": 1280,
+          "x": 109302
+        },
+        {
+          "height": 1414,
+          "hidden": true,
+          "id": "2c661b1f7f4e4741b7ee26e6d7443dc7",
+          "sourceScreen": "projects/15482838516786912428/screens/2c661b1f7f4e4741b7ee26e6d7443dc7",
+          "width": 1280,
+          "x": 106614
+        },
+        {
+          "height": 1031,
+          "hidden": true,
+          "id": "324e1b1ba6894a8bbe4912431bf681b1",
+          "sourceScreen": "projects/15482838516786912428/screens/324e1b1ba6894a8bbe4912431bf681b1",
+          "width": 1280,
+          "x": 125430
+        },
+        {
+          "height": 2235,
+          "hidden": true,
+          "id": "3601216c8686487a8d6b9902ab383325",
+          "sourceScreen": "projects/15482838516786912428/screens/3601216c8686487a8d6b9902ab383325",
+          "width": 1280,
+          "x": 101238
+        },
+        {
+          "height": 1368,
+          "hidden": true,
+          "id": "3ac3de8c6dcf45a28b7f4dd40a06c94b",
+          "sourceScreen": "projects/15482838516786912428/screens/3ac3de8c6dcf45a28b7f4dd40a06c94b",
+          "width": 1280,
+          "x": 50166
+        },
+        {
+          "height": 567,
+          "id": "3ac67055-5dda-4b78-9198-3a459435ba90",
+          "sourceScreen": "projects/15482838516786912428/screens/9964093765872979000",
+          "width": 569,
+          "x": 511
+        },
+        {
+          "height": 1402,
+          "hidden": true,
+          "id": "3c75451e6307423882e99895ab11761b",
+          "sourceScreen": "projects/15482838516786912428/screens/3c75451e6307423882e99895ab11761b",
+          "width": 1280,
+          "x": 35382
+        },
+        {
+          "height": 698,
+          "hidden": true,
+          "id": "3fbb5cce823547cd93e2e06c22aefe91",
+          "sourceScreen": "projects/15482838516786912428/screens/3fbb5cce823547cd93e2e06c22aefe91",
+          "width": 1280,
+          "x": 73014
+        },
+        {
+          "height": 409,
+          "id": "46d53e68-7e89-42cf-8f70-ada94154c95f",
+          "sourceScreen": "projects/15482838516786912428/screens/9964093765872979819",
+          "width": 574,
+          "x": 1144
+        },
+        {
+          "height": 2164,
+          "hidden": true,
+          "id": "4dcf82c6b9aa4bf282a33961e77c57fb",
+          "sourceScreen": "projects/15482838516786912428/screens/4dcf82c6b9aa4bf282a33961e77c57fb",
+          "width": 1280,
+          "x": 94518
+        },
+        {
+          "height": 1322,
+          "hidden": true,
+          "id": "504438aac3474c6fbfa9f1f35ea00414",
+          "sourceScreen": "projects/15482838516786912428/screens/504438aac3474c6fbfa9f1f35ea00414",
+          "width": 1280,
+          "x": 52854
+        },
+        {
+          "height": 1496,
+          "hidden": true,
+          "id": "520f2d8b0e8e44fb9cf62a69f1ade0f6",
+          "sourceScreen": "projects/15482838516786912428/screens/520f2d8b0e8e44fb9cf62a69f1ade0f6",
+          "width": 1280,
+          "x": 16566
+        },
+        {
+          "height": 1239,
+          "hidden": true,
+          "id": "53f7e23fd7e44ecf868209ca0d5f2f38",
+          "sourceScreen": "projects/15482838516786912428/screens/53f7e23fd7e44ecf868209ca0d5f2f38",
+          "width": 1280,
+          "x": 27318
+        },
+        {
+          "height": 4088,
+          "hidden": true,
+          "id": "5575823bc0644c17bf593c7601395ad0",
+          "sourceScreen": "projects/15482838516786912428/screens/5575823bc0644c17bf593c7601395ad0",
+          "width": 1280,
+          "x": 85110
+        },
+        {
+          "height": 1459,
+          "hidden": true,
+          "id": "563f6538f43e46e2ae8f791b5b349b65",
+          "sourceScreen": "projects/15482838516786912428/screens/563f6538f43e46e2ae8f791b5b349b65",
+          "width": 1280,
+          "x": 66294
+        },
+        {
+          "height": 1221,
+          "hidden": true,
+          "id": "5673cabfc0ec4b61a0bf0e2a5cc7bc7b",
+          "sourceScreen": "projects/15482838516786912428/screens/5673cabfc0ec4b61a0bf0e2a5cc7bc7b",
+          "width": 1280,
+          "x": 25974
+        },
+        {
+          "height": 4088,
+          "hidden": true,
+          "id": "57a22fe37c684a559809e452f5f77b01",
+          "sourceScreen": "projects/15482838516786912428/screens/57a22fe37c684a559809e452f5f77b01",
+          "width": 1280,
+          "x": 83766
+        },
+        {
+          "height": 2298,
+          "hidden": true,
+          "id": "5d626ac695a34edd9702533c835f77ba",
+          "sourceScreen": "projects/15482838516786912428/screens/5d626ac695a34edd9702533c835f77ba",
+          "width": 1280,
+          "x": 34038
+        },
+        {
+          "height": 1532,
+          "hidden": true,
+          "id": "60178cffe66d42299eef1f2bcfb47b03",
+          "sourceScreen": "projects/15482838516786912428/screens/60178cffe66d42299eef1f2bcfb47b03",
+          "width": 1280,
+          "x": 117366
+        },
+        {
+          "height": 4088,
+          "hidden": true,
+          "id": "604ef2a1b26f4e01bfacba6b7b3346f5",
+          "sourceScreen": "projects/15482838516786912428/screens/604ef2a1b26f4e01bfacba6b7b3346f5",
+          "width": 1280,
+          "x": 82422
+        },
+        {
+          "height": 1130,
+          "hidden": true,
+          "id": "6368a2d433b740228cdddc89c350957f",
+          "sourceScreen": "projects/15482838516786912428/screens/6368a2d433b740228cdddc89c350957f",
+          "width": 1280,
+          "x": 39414
+        },
+        {
+          "height": 1024,
+          "hidden": true,
+          "id": "67267c3ab54d4eb1a750825665d5956a",
+          "sourceScreen": "projects/15482838516786912428/screens/67267c3ab54d4eb1a750825665d5956a",
+          "width": 1280,
+          "x": 121398
+        },
+        {
+          "height": 2127,
+          "hidden": true,
+          "id": "698190e1446c4a59abdc2bf89bb066d1",
+          "sourceScreen": "projects/15482838516786912428/screens/698190e1446c4a59abdc2bf89bb066d1",
+          "width": 1280,
+          "x": 43446
+        },
+        {
+          "height": 1386,
+          "hidden": true,
+          "id": "6ed044809d3f440aa223fb9134f50155",
+          "sourceScreen": "projects/15482838516786912428/screens/6ed044809d3f440aa223fb9134f50155",
+          "width": 1280,
+          "x": 19254
+        },
+        {
+          "height": 4088,
+          "hidden": true,
+          "id": "75835e4a622e4093be9e56d16eb58076",
+          "sourceScreen": "projects/15482838516786912428/screens/75835e4a622e4093be9e56d16eb58076",
+          "width": 1280,
+          "x": 89142
+        },
+        {
+          "height": 1024,
+          "hidden": true,
+          "id": "7b3f01ff11234cfb931ed79b16dfbfe3",
+          "sourceScreen": "projects/15482838516786912428/screens/7b3f01ff11234cfb931ed79b16dfbfe3",
+          "width": 1280,
+          "x": 113334
+        },
+        {
+          "height": 1881,
+          "hidden": true,
+          "id": "7c443048ef0649a7bd3153787f359bd1",
+          "sourceScreen": "projects/15482838516786912428/screens/7c443048ef0649a7bd3153787f359bd1",
+          "width": 1280,
+          "x": 48822
+        },
+        {
+          "height": 867,
+          "hidden": true,
+          "id": "7c4d5793140146c9923bef0a53acc572",
+          "sourceScreen": "projects/15482838516786912428/screens/7c4d5793140146c9923bef0a53acc572",
+          "width": 1280,
+          "x": 17910
+        },
+        {
+          "height": 4053,
+          "hidden": true,
+          "id": "8076a3e23c004356a930ce75bf386801",
+          "sourceScreen": "projects/15482838516786912428/screens/8076a3e23c004356a930ce75bf386801",
+          "width": 1280,
+          "x": 74358
+        },
+        {
+          "height": 1713,
+          "hidden": true,
+          "id": "80ebdb22cde340169e41e9c9180b672e",
+          "sourceScreen": "projects/15482838516786912428/screens/80ebdb22cde340169e41e9c9180b672e",
+          "width": 1280,
+          "x": 62262
+        },
+        {
+          "height": 4053,
+          "hidden": true,
+          "id": "82363f4943cc4699a3509f6ecfd51ac1",
+          "sourceScreen": "projects/15482838516786912428/screens/82363f4943cc4699a3509f6ecfd51ac1",
+          "width": 1280,
+          "x": 77046
+        },
+        {
+          "height": 2517,
+          "hidden": true,
+          "id": "83aa90c80e8444649ef8b5e756fc9f9f",
+          "sourceScreen": "projects/15482838516786912428/screens/83aa90c80e8444649ef8b5e756fc9f9f",
+          "width": 1280,
+          "x": 90486
+        },
+        {
+          "height": 1766,
+          "hidden": true,
+          "id": "8506d860215b4ca9bac3db576e322964",
+          "sourceScreen": "projects/15482838516786912428/screens/8506d860215b4ca9bac3db576e322964",
+          "width": 1280,
+          "x": 58230
+        },
+        {
+          "height": 4052,
+          "hidden": true,
+          "id": "85f85bffb71a47e18282129fde24b72e",
+          "sourceScreen": "projects/15482838516786912428/screens/85f85bffb71a47e18282129fde24b72e",
+          "width": 1280,
+          "x": 44790
+        },
+        {
+          "height": 3295,
+          "hidden": true,
+          "id": "888d1b6e98f34ae88f15a69c6486ae04",
+          "sourceScreen": "projects/15482838516786912428/screens/888d1b6e98f34ae88f15a69c6486ae04",
+          "width": 1280,
+          "x": 59574
+        },
+        {
+          "height": 1147,
+          "hidden": true,
+          "id": "8deed9ba07ce4a66bb91e3c49b63c377",
+          "sourceScreen": "projects/15482838516786912428/screens/8deed9ba07ce4a66bb91e3c49b63c377",
+          "width": 1280,
+          "x": 24630
+        },
+        {
+          "height": 1440,
+          "hidden": true,
+          "id": "91d7b38252ff4cf193163285c5f0bb54",
+          "sourceScreen": "projects/15482838516786912428/screens/91d7b38252ff4cf193163285c5f0bb54",
+          "width": 1280,
+          "x": 107958
+        },
+        {
+          "height": 4088,
+          "hidden": true,
+          "id": "96c40d5dbda34ad38aba36dbf6c20214",
+          "sourceScreen": "projects/15482838516786912428/screens/96c40d5dbda34ad38aba36dbf6c20214",
+          "width": 1280,
+          "x": 87798
+        },
+        {
+          "height": 1973,
+          "hidden": true,
+          "id": "981b6c91e14745758658d453df0d1165",
+          "sourceScreen": "projects/15482838516786912428/screens/981b6c91e14745758658d453df0d1165",
+          "width": 1280,
+          "x": 15222
+        },
+        {
+          "height": 1956,
+          "hidden": true,
+          "id": "987952625a5747e9aca6bb0ca8f12a43",
+          "sourceScreen": "projects/15482838516786912428/screens/987952625a5747e9aca6bb0ca8f12a43",
+          "width": 1280,
+          "x": 30006
+        },
+        {
+          "height": 1619,
+          "hidden": true,
+          "id": "98aa8c283e514c0499e56a8b7923a7b7",
+          "sourceScreen": "projects/15482838516786912428/screens/98aa8c283e514c0499e56a8b7923a7b7",
+          "width": 1280,
+          "x": 98550
+        },
+        {
+          "height": 3069,
+          "id": "98ae2d57ad944a9c918faf87a17f546d",
+          "sourceScreen": "projects/15482838516786912428/screens/98ae2d57ad944a9c918faf87a17f546d",
+          "width": 1280,
+          "x": 1782
+        },
+        {
+          "height": 1417,
+          "id": "9a3f2b1bcc3941949326e3dd102cda81",
+          "sourceScreen": "projects/15482838516786912428/screens/9a3f2b1bcc3941949326e3dd102cda81",
+          "width": 1280,
+          "x": 7158
+        },
+        {
+          "height": 3960,
+          "hidden": true,
+          "id": "9b2505b163bc42ffb801b2192fd3473f",
+          "sourceScreen": "projects/15482838516786912428/screens/9b2505b163bc42ffb801b2192fd3473f",
+          "width": 1280,
+          "x": 55542
+        },
+        {
+          "height": 4053,
+          "hidden": true,
+          "id": "9d2b3d17507440e0a1dc0d5ec546ecb7",
+          "sourceScreen": "projects/15482838516786912428/screens/9d2b3d17507440e0a1dc0d5ec546ecb7",
+          "width": 1280,
+          "x": 70326
+        },
+        {
+          "height": 1549,
+          "id": "9d4ff9f1db0245d48aae7cdd9cc67ff0",
+          "sourceScreen": "projects/15482838516786912428/screens/9d4ff9f1db0245d48aae7cdd9cc67ff0",
+          "width": 1280,
+          "x": 8502
+        },
+        {
+          "height": 3516,
+          "id": "9d509e9f88e3413cad1cc66f14d0a3e2",
+          "sourceScreen": "projects/15482838516786912428/screens/9d509e9f88e3413cad1cc66f14d0a3e2",
+          "width": 1280,
+          "x": 3126
+        },
+        {
+          "height": 1123,
+          "hidden": true,
+          "id": "a2437dad64f14c9ca57536e91bff7597",
+          "sourceScreen": "projects/15482838516786912428/screens/a2437dad64f14c9ca57536e91bff7597",
+          "width": 1280,
+          "x": 95862
+        },
+        {
+          "height": 1875,
+          "hidden": true,
+          "id": "a247d254a59b4beb91034aee28178120",
+          "sourceScreen": "projects/15482838516786912428/screens/a247d254a59b4beb91034aee28178120",
+          "width": 1280,
+          "x": 63606
+        },
+        {
+          "height": 1453,
+          "hidden": true,
+          "id": "a305a604b6ab452d8db6a9da2b35db1f",
+          "sourceScreen": "projects/15482838516786912428/screens/a305a604b6ab452d8db6a9da2b35db1f",
+          "width": 1280,
+          "x": 46134
+        },
+        {
+          "height": 1031,
+          "hidden": true,
+          "id": "a61a09dfb1b247c1ad570aca333a28aa",
+          "sourceScreen": "projects/15482838516786912428/screens/a61a09dfb1b247c1ad570aca333a28aa",
+          "width": 1280,
+          "x": 128118
+        },
+        {
+          "height": 1887,
+          "hidden": true,
+          "id": "ad390c4d64dc488b876969095c60f205",
+          "sourceScreen": "projects/15482838516786912428/screens/ad390c4d64dc488b876969095c60f205",
+          "width": 1280,
+          "x": 97206
+        },
+        {
+          "height": 1479,
+          "hidden": true,
+          "id": "adb9daa2b64745c6a70e6d0a250a3e4c",
+          "sourceScreen": "projects/15482838516786912428/screens/adb9daa2b64745c6a70e6d0a250a3e4c",
+          "width": 1280,
+          "x": 40758
+        },
+        {
+          "height": 1330,
+          "hidden": true,
+          "id": "b3b54f8865554e88a04924466da81ad7",
+          "sourceScreen": "projects/15482838516786912428/screens/b3b54f8865554e88a04924466da81ad7",
+          "width": 1280,
+          "x": 54198
+        },
+        {
+          "height": 1024,
+          "hidden": true,
+          "id": "b4112ed8d87c405d827c38c8227545fc",
+          "sourceScreen": "projects/15482838516786912428/screens/b4112ed8d87c405d827c38c8227545fc",
+          "width": 1280,
+          "x": 118710
+        },
+        {
+          "height": 1032,
+          "hidden": true,
+          "id": "b67ea5c326e340fa90a5c8a5a16fbc48",
+          "sourceScreen": "projects/15482838516786912428/screens/b67ea5c326e340fa90a5c8a5a16fbc48",
+          "width": 1280,
+          "x": 38070
+        },
+        {
+          "height": 1374,
+          "hidden": true,
+          "id": "b8a851ce2f364c7daaa88ffcea3d6d39",
+          "sourceScreen": "projects/15482838516786912428/screens/b8a851ce2f364c7daaa88ffcea3d6d39",
+          "width": 1280,
+          "x": 32694
+        },
+        {
+          "height": 1024,
+          "hidden": true,
+          "id": "bcd650d917804a7eb24d0f437e37481b",
+          "sourceScreen": "projects/15482838516786912428/screens/bcd650d917804a7eb24d0f437e37481b",
+          "width": 1280,
+          "x": 124086
+        },
+        {
+          "height": 2672,
+          "hidden": true,
+          "id": "bd5de21bbd264ab29802d5c73a52749a",
+          "sourceScreen": "projects/15482838516786912428/screens/bd5de21bbd264ab29802d5c73a52749a",
+          "width": 1280,
+          "x": 31350
+        },
+        {
+          "height": 1024,
+          "hidden": true,
+          "id": "bdeccb9fa7db47d7a8e4b91373a5db6a",
+          "sourceScreen": "projects/15482838516786912428/screens/bdeccb9fa7db47d7a8e4b91373a5db6a",
+          "width": 1280,
+          "x": 51510
+        },
+        {
+          "height": 1169,
+          "id": "c07921b071da43389f5eb7ee82d01bd8",
+          "sourceScreen": "projects/15482838516786912428/screens/c07921b071da43389f5eb7ee82d01bd8",
+          "width": 1280,
+          "x": 12534
+        },
+        {
+          "height": 698,
+          "hidden": true,
+          "id": "c17455431fbe4a978ed9966735f1c4fe",
+          "sourceScreen": "projects/15482838516786912428/screens/c17455431fbe4a978ed9966735f1c4fe",
+          "width": 1280,
+          "x": 75702
+        },
+        {
+          "height": 2589,
+          "hidden": true,
+          "id": "c2bf55cdee294d6a99fbe7928ac99c91",
+          "sourceScreen": "projects/15482838516786912428/screens/c2bf55cdee294d6a99fbe7928ac99c91",
+          "width": 1280,
+          "x": 56886
+        },
+        {
+          "height": 1081,
+          "hidden": true,
+          "id": "c3fc176a442a4221aef0c4a1012a801e",
+          "sourceScreen": "projects/15482838516786912428/screens/c3fc176a442a4221aef0c4a1012a801e",
+          "width": 1280,
+          "x": 116022
+        },
+        {
+          "height": 1434,
+          "id": "c71d101acf5e4a288b9c297912683f75",
+          "sourceScreen": "projects/15482838516786912428/screens/c71d101acf5e4a288b9c297912683f75",
+          "width": 1280,
+          "x": 11190
+        },
+        {
+          "height": 1339,
+          "hidden": true,
+          "id": "c90288ad92dc407496bf3f83b51f3361",
+          "sourceScreen": "projects/15482838516786912428/screens/c90288ad92dc407496bf3f83b51f3361",
+          "width": 1280,
+          "x": 23286
+        },
+        {
+          "height": 2739,
+          "hidden": true,
+          "id": "cf1106f37b4a4223852e1687b3ac5559",
+          "sourceScreen": "projects/15482838516786912428/screens/cf1106f37b4a4223852e1687b3ac5559",
+          "width": 1280,
+          "x": 28662
+        },
+        {
+          "height": 1749,
+          "hidden": true,
+          "id": "d276fe383d844a8fa492dcc8a1068e5d",
+          "sourceScreen": "projects/15482838516786912428/screens/d276fe383d844a8fa492dcc8a1068e5d",
+          "width": 1280,
+          "x": 122742
+        },
+        {
+          "height": 4053,
+          "hidden": true,
+          "id": "d350cee9313b4d7c8c7d4f23c56d3d22",
+          "sourceScreen": "projects/15482838516786912428/screens/d350cee9313b4d7c8c7d4f23c56d3d22",
+          "width": 1280,
+          "x": 78390
+        },
+        {
+          "height": 4053,
+          "hidden": true,
+          "id": "d5cddcd8079c485489312cf0d5f53133",
+          "sourceScreen": "projects/15482838516786912428/screens/d5cddcd8079c485489312cf0d5f53133",
+          "width": 1280,
+          "x": 81078
+        },
+        {
+          "height": 954,
+          "hidden": true,
+          "id": "d6a1f191008640bc8e192d9b56a23b0c",
+          "sourceScreen": "projects/15482838516786912428/screens/d6a1f191008640bc8e192d9b56a23b0c",
+          "width": 1280,
+          "x": 21942
+        },
+        {
+          "height": 1677,
+          "hidden": true,
+          "id": "d797d6f9d77342a1ab5a8775c3dc1d9f",
+          "sourceScreen": "projects/15482838516786912428/screens/d797d6f9d77342a1ab5a8775c3dc1d9f",
+          "width": 1280,
+          "x": 93174
+        },
+        {
+          "height": 1144,
+          "hidden": true,
+          "id": "d951155741464e5bab08b965632ab14c",
+          "sourceScreen": "projects/15482838516786912428/screens/d951155741464e5bab08b965632ab14c",
+          "width": 1280,
+          "x": 20598
+        },
+        {
+          "height": 1260,
+          "hidden": true,
+          "id": "dd6858edce3d4d8b9542865132e7f272",
+          "sourceScreen": "projects/15482838516786912428/screens/dd6858edce3d4d8b9542865132e7f272",
+          "width": 1280,
+          "x": 126774
+        },
+        {
+          "height": 4088,
+          "hidden": true,
+          "id": "e5af4b4198d5422e800a4d981d72ccfc",
+          "sourceScreen": "projects/15482838516786912428/screens/e5af4b4198d5422e800a4d981d72ccfc",
+          "width": 1280,
+          "x": 86454
+        },
+        {
+          "height": 1355,
+          "id": "e855d6e37fb6425d9ab5569278c278ec",
+          "sourceScreen": "projects/15482838516786912428/screens/e855d6e37fb6425d9ab5569278c278ec",
+          "width": 1280,
+          "x": 5814
+        },
+        {
+          "height": 4053,
+          "hidden": true,
+          "id": "e948fd2988a94450b542d8ac8f785dd4",
+          "sourceScreen": "projects/15482838516786912428/screens/e948fd2988a94450b542d8ac8f785dd4",
+          "width": 1280,
+          "x": 71670
+        },
+        {
+          "height": 1024,
+          "hidden": true,
+          "id": "e9faeb209f1048e382106051bcc06728",
+          "sourceScreen": "projects/15482838516786912428/screens/e9faeb209f1048e382106051bcc06728",
+          "width": 1280,
+          "x": 99894
+        },
+        {
+          "height": 1024,
+          "hidden": true,
+          "id": "ea8cd9234c334cf3bd2768615fce1243",
+          "sourceScreen": "projects/15482838516786912428/screens/ea8cd9234c334cf3bd2768615fce1243",
+          "width": 1280,
+          "x": 111990
+        },
+        {
+          "height": 1379,
+          "hidden": true,
+          "id": "eadf942c0bb74c0d82617c558fe3052c",
+          "sourceScreen": "projects/15482838516786912428/screens/eadf942c0bb74c0d82617c558fe3052c",
+          "width": 1280,
+          "x": 110646
+        },
+        {
+          "height": 4053,
+          "hidden": true,
+          "id": "eb4f3be32e1b47afb23fce84a1830984",
+          "sourceScreen": "projects/15482838516786912428/screens/eb4f3be32e1b47afb23fce84a1830984",
+          "width": 1280,
+          "x": 79734
+        },
+        {
+          "height": 3578,
+          "hidden": true,
+          "id": "ed3e1f54f2b84473919188bac63651b0",
+          "sourceScreen": "projects/15482838516786912428/screens/ed3e1f54f2b84473919188bac63651b0",
+          "width": 1280,
+          "x": 42102
+        },
+        {
+          "height": 1024,
+          "id": "ef8058cfaf924f9daaf46376c35b3f11",
+          "sourceScreen": "projects/15482838516786912428/screens/ef8058cfaf924f9daaf46376c35b3f11",
+          "width": 1280,
+          "x": 9846
+        },
+        {
+          "height": 1024,
+          "hidden": true,
+          "id": "f0dc16e895b940dea2b26fa0f6e566e0",
+          "sourceScreen": "projects/15482838516786912428/screens/f0dc16e895b940dea2b26fa0f6e566e0",
+          "width": 1280,
+          "x": 102582
+        },
+        {
+          "height": 4053,
+          "hidden": true,
+          "id": "f34b59b5af074c3986f8d79a1eea2cbc",
+          "sourceScreen": "projects/15482838516786912428/screens/f34b59b5af074c3986f8d79a1eea2cbc",
+          "width": 1280,
+          "x": 68982
+        },
+        {
+          "height": 2225,
+          "hidden": true,
+          "id": "f39c1453d6b7469a9c92f95fd5937d95",
+          "sourceScreen": "projects/15482838516786912428/screens/f39c1453d6b7469a9c92f95fd5937d95",
+          "width": 1280,
+          "x": 103926
+        },
+        {
+          "height": 1031,
+          "hidden": true,
+          "id": "f93bb43d1d75448c922e346471c03b97",
+          "sourceScreen": "projects/15482838516786912428/screens/f93bb43d1d75448c922e346471c03b97",
+          "width": 1280,
+          "x": 130806
+        },
+        {
+          "height": 1745,
+          "hidden": true,
+          "id": "fb2538701fc2498fbc306e4c330fc8c8",
+          "sourceScreen": "projects/15482838516786912428/screens/fb2538701fc2498fbc306e4c330fc8c8",
+          "width": 1280,
+          "x": 129462
+        },
+        {
+          "height": 1742,
+          "hidden": true,
+          "id": "ffc73f02ba48406f8493b987e0782cbb",
+          "sourceScreen": "projects/15482838516786912428/screens/ffc73f02ba48406f8493b987e0782cbb",
+          "width": 1280,
+          "x": 36726
+        }
+      ],
+      "thumbnailScreenshot": {
+        "downloadUrl": "https://lh3.googleusercontent.com/aida/AOfcidU9A-10qKQA2o_Ficl6Y2z8z71YzJGJUmv5EwKlAQsT1IG4j_Er3e5eLdli-rLyqbCRRtACtDMORz3Mm1RNVjn7t-xyDT7x2EJSIKJID8ZOcKwX2LI1GW4uhQsUfyKG7nHHsorKn8_Z2--Bzt4kziTEX5p9c-riauCnbCV89DY_G6YGRPC6cl1LBP-Za-aKHk0Vcxx-hBqugRFwpwN0ywZWVj0rB2TLrAvC0VYY5hjjUUBMP1zaQondYvk",
+        "name": "projects/15482838516786912428/files/d1cab792cc064ca783c0e01e26cfd79b"
+      },
+      "title": "Job Board Home Page",
+      "updateTime": "2026-02-08T06:24:37.678642Z",
+      "visibility": "PRIVATE"
+    },
+    {
+      "createTime": "2026-01-14T06:11:47.150642Z",
+      "designTheme": {
+        "backgroundLight": "#fcfcfc",
+        "colorMode": "LIGHT",
+        "customColor": "#0066ff",
+        "description": "Embrace a 'Beauty in Precision' philosophy with an elevated, minimalist interface, channeling the sophisticated clarity of Swiss International Style fused with the curated elegance of a premium digital magazine. The layout is built upon a rigorously structured, modular grid, utilizing Tailwind's flex and grid systems for absolute alignment and consistency. Content is presented within flat, solid containers with subtle `rounded-sm` (4px) corners, ensuring a sharp yet approachable modern aesthetic. \n\nThe depth model is intentionally flat and shadow-free, achieving visual hierarchy purely through generous negative space, precise typography, and strategic color contrast, adhering strictly to the 'Swiss Design' mandate. Structural elements and separators are defined by crisp, 1px solid borders in a deep charcoal (#0A0A0A).\n\nThe color story is a meticulously curated trio: an ultra-soft white background (#FDFDFD / HSL[0, 0, 99]) provides an expansive, airy canvas; a deep, elegant charcoal (#0A0A0A / HSL[0, 0, 4]) is used for all text, hairline borders, and key structural outlines, ensuring high readability and crisp definition. The modern, vibrant Electric Blue (#0057FF / HSL[216, 100, 50]) serves as the sole accent color, applied strictly and powerfully to primary CTAs (e.g., 'TH├èM V├ÇO GIß╗Ä H├ÇNG'), active navigation states, interactive links, and key focus elements to guide user attention with impactful precision.\n\nTypography utilizes the `Inter` sans-serif exclusively, creating a masterful hierarchy through varying weights and sizes. Large editorial headlines and critical information (e.g., 'Tß╗òng thu nhß║¡p') use `text-5xl` with a bold weight, set with generous letter-spacing for a commanding presence. Body text, labels, and descriptions are rendered in `text-base` with regular or medium weights, ensuring optimal readability. Metadata and secondary information use `text-xs` with lighter weights. Ample line-heights contribute to the airy, scannable experience.\n\nNavigation is purely text-based, presented as clean, high-contrast horizontal menus for primary navigation (e.g., 'Nam / Nß╗» / Phß╗Ñ kiß╗çn') and persistent vertical lists for application-specific sidebars (e.g., 'Ng╞░ß╗¥i b├ín: Shop ABC'). Active navigation items are highlighted with the Electric Blue accent. \n\nVisual elements are stripped to their essence: no icons are used, with text labels replacing them. Imagery consists of high-quality product photography, presented cleanly and without effects, allowing the products to speak for themselves within the precisely defined layouts. Structural integrity is conveyed through the consistent application of hairline borders.\n\nSpacing and breathing room are paramount, with main containers utilizing `p-12` padding and internal components adopting `p-8`, creating a luxurious sense of expanse and reducing cognitive load. Negative space is a fundamental design tool, used generously to separate content blocks and draw focus to key information, mirroring the calm, uncluttered experience of browsing a high-end art catalog. Interactions are subtle: hover states for links employ a `hover:underline` effect, while actionable elements like buttons use a `hover:bg-gray-50` for clear feedback, maintaining the flat aesthetic.\n\nThis aesthetic champions the 'Beauty in Precision' by merging the intellectual clarity of Swiss grid systems and typographic rigor with the curated spaciousness of high-end editorial design, delivering an experience that feels sophisticated, modern, and effortlessly navigable.",
+        "font": "INTER",
+        "roundness": "ROUND_FOUR",
+        "saturation": 3
+      },
+      "deviceType": "DESKTOP",
+      "metadata": {
+        "userRole": "OWNER"
+      },
+      "name": "projects/15504427359562596967",
+      "origin": "STITCH",
+      "projectType": "TEXT_TO_UI_PRO",
+      "screenInstances": [
+        {
+          "height": 1828,
+          "id": "07de2a01e0774f2b9df6d19c11fbf85f",
+          "sourceScreen": "projects/15504427359562596967/screens/07de2a01e0774f2b9df6d19c11fbf85f",
+          "width": 1280,
+          "x": 10752
+        },
+        {
+          "height": 1526,
+          "id": "1d1ed54c00314ee5acbcaadf4a8a9a2d",
+          "sourceScreen": "projects/15504427359562596967/screens/1d1ed54c00314ee5acbcaadf4a8a9a2d",
+          "width": 1280,
+          "x": 12096
+        },
+        {
+          "height": 3311,
+          "id": "20ce55d92a4a41e59f66ca8429097d15",
+          "sourceScreen": "projects/15504427359562596967/screens/20ce55d92a4a41e59f66ca8429097d15",
+          "width": 1280,
+          "y": 2832
+        },
+        {
+          "height": 1427,
+          "id": "61961b86fe06481cac30c00a8b9a6f2f",
+          "sourceScreen": "projects/15504427359562596967/screens/61961b86fe06481cac30c00a8b9a6f2f",
+          "width": 1280,
+          "x": 2688
+        },
+        {
+          "height": 1057,
+          "id": "76376a33a78c4e2288f67f8d6a7feed0",
+          "sourceScreen": "projects/15504427359562596967/screens/76376a33a78c4e2288f67f8d6a7feed0",
+          "width": 1280,
+          "x": 5376
+        },
+        {
+          "height": 1152,
+          "id": "7aeefd1b79fb4e3ba6b001bd3bb923db",
+          "sourceScreen": "projects/15504427359562596967/screens/7aeefd1b79fb4e3ba6b001bd3bb923db",
+          "width": 1280,
+          "x": 12096,
+          "y": 2832
+        },
+        {
+          "height": 1731,
+          "id": "7ddaa9aa97334e77a2877c62a2ced58b",
+          "sourceScreen": "projects/15504427359562596967/screens/7ddaa9aa97334e77a2877c62a2ced58b",
+          "width": 1280,
+          "x": 1344,
+          "y": 2832
+        },
+        {
+          "height": 1117,
+          "id": "876136a863cd48849fd9dbe2343a56cf",
+          "sourceScreen": "projects/15504427359562596967/screens/876136a863cd48849fd9dbe2343a56cf",
+          "width": 1280,
+          "x": 5376,
+          "y": 2832
+        },
+        {
+          "height": 2576,
+          "id": "8c7293d29fc94f16842d52e7c731421b",
+          "sourceScreen": "projects/15504427359562596967/screens/8c7293d29fc94f16842d52e7c731421b",
+          "width": 1280
+        },
+        {
+          "height": 1918,
+          "id": "97820263c79a4a58819cbc71e5f8ca94",
+          "sourceScreen": "projects/15504427359562596967/screens/97820263c79a4a58819cbc71e5f8ca94",
+          "width": 1280,
+          "x": 1344
+        },
+        {
+          "height": 1333,
+          "id": "97894eb3628a4553aeef9d9c47a50fc8",
+          "sourceScreen": "projects/15504427359562596967/screens/97894eb3628a4553aeef9d9c47a50fc8",
+          "width": 1280,
+          "x": 8064
+        },
+        {
+          "height": 1755,
+          "id": "9cf76bfdde1048ea815c8a250b141ca5",
+          "sourceScreen": "projects/15504427359562596967/screens/9cf76bfdde1048ea815c8a250b141ca5",
+          "width": 1280,
+          "x": 9408,
+          "y": 2832
+        },
+        {
+          "height": 1281,
+          "id": "a38e32deb0f042f2af9dcf764a805ad0",
+          "sourceScreen": "projects/15504427359562596967/screens/a38e32deb0f042f2af9dcf764a805ad0",
+          "width": 1280,
+          "x": 4032,
+          "y": 2832
+        },
+        {
+          "height": 1308,
+          "id": "ab8341c307cc4b06b7f38d2a244b0132",
+          "sourceScreen": "projects/15504427359562596967/screens/ab8341c307cc4b06b7f38d2a244b0132",
+          "width": 1280,
+          "x": 2688,
+          "y": 2832
+        },
+        {
+          "height": 4110,
+          "id": "c3291f8731644c12937af7f3409aba59",
+          "sourceScreen": "projects/15504427359562596967/screens/c3291f8731644c12937af7f3409aba59",
+          "width": 1280,
+          "x": 6720,
+          "y": 2832
+        },
+        {
+          "height": 1626,
+          "id": "cefc9adefc97404ba068232b2538b33d",
+          "sourceScreen": "projects/15504427359562596967/screens/cefc9adefc97404ba068232b2538b33d",
+          "width": 1280,
+          "x": 4032
+        },
+        {
+          "height": 1187,
+          "id": "d7b74d819d5b49ddb5231bb4f2df70f8",
+          "sourceScreen": "projects/15504427359562596967/screens/d7b74d819d5b49ddb5231bb4f2df70f8",
+          "width": 1280,
+          "x": 8064,
+          "y": 2832
+        },
+        {
+          "height": 1024,
+          "id": "e0e1cb4f25ce459e8eb6d3e29073d313",
+          "sourceScreen": "projects/15504427359562596967/screens/e0e1cb4f25ce459e8eb6d3e29073d313",
+          "width": 1280,
+          "x": 10752,
+          "y": 2832
+        },
+        {
+          "height": 1251,
+          "id": "e2043c2db5e64bc2b95ee381aa43b72f",
+          "sourceScreen": "projects/15504427359562596967/screens/e2043c2db5e64bc2b95ee381aa43b72f",
+          "width": 1280,
+          "x": 6720
+        },
+        {
+          "height": 1396,
+          "id": "e9d900eb2147444db653d7beb76aa9d3",
+          "sourceScreen": "projects/15504427359562596967/screens/e9d900eb2147444db653d7beb76aa9d3",
+          "width": 1280,
+          "x": 9408
+        }
+      ],
+      "thumbnailScreenshot": {
+        "downloadUrl": "https://lh3.googleusercontent.com/aida/AOfcidXz-vdVdKwdhqfweAi9NBrqMLAcTbSeYRMDo4eFXNDxPMDBu79prw1DZbwV5-KtFwGBVcV07xBYG5BjSbekOXSAfQZh_Ewg5l9li-welHAHg5X3touPdb29-GLTxvt3lkZU9b61xc8f6gczXmIna0yfU4VWU3TvFEwIdeRJ4qZugPVJMVZBQiYDxLcNik5CYzdaPEkOB0L0fZX0u4JL961LMSAxTc1Ilb-w8x40AXaP5sTILyGyEhrpMysN",
+        "name": "projects/15504427359562596967/files/aa737be16a9949aeb7e7f466fc4bc2df"
+      },
+      "title": "Kh├ím Ph├í Sß║ún Phß║⌐m",
+      "updateTime": "2026-01-14T06:48:10.817533Z",
+      "visibility": "PRIVATE"
+    },
+    {
+      "createTime": "2026-01-14T06:05:27.517849Z",
+      "designTheme": {
+        "backgroundLight": "#ffffff",
+        "colorMode": "LIGHT",
+        "customColor": "#2424eb",
+        "description": "This design system brief outlines a highly disciplined and minimalist aesthetic, specifically tailored for a B2B2C multi-vendor platform demanding absolute clarity, functionality, and professional rigor. Embracing a 'no-frills, all-function' philosophy, the interface leverages typography, strict grids, and high-contrast elements to convey information with unwavering precision, especially critical given the absence of icons and gradients. The core visual language is stark and direct, designed to prioritize content and user interaction flow above all else, facilitating seamless navigation and communication across Customer, Seller, and Admin roles.\n\n1.  **Layout & Grid**: The foundation is a rigid, systematic grid layout, ensuring impeccable alignment and visual order. A unified shell comprises a persistent top navigation bar for global actions and a dynamic left-aligned sidebar that intelligently adapts its content and options based on the active user role's permissions. Content areas utilize a clean, modular structure, reminiscent of a sparse editorial layout. Product listings and data tables adhere to a precise grid system, where each item or card is distinctly delineated by a 1px solid border using the primary black color (#1A1A1A), creating clear visual segmentation without any shadows or depth effects. Ample whitespace is strategically employed within and around these modules to provide visual breathing room and emphasize information hierarchy, crucial in an icon-free environment.\n\n2.  **Depth Model**: Strictly adhering to a 'Flat Design' paradigm, the interface completely eschews gradients, shadows, glows, and any form of simulated depth. All elements exist on a single visual plane. Distinction and interaction cues are exclusively achieved through high-contrast typography, solid 1px borders (using #1A1A1A for containers and buttons), and the sparing application of the accent color for active states.\n\n3.  **Color Story**: The color palette is intentionally limited to three high-contrast colors to reinforce the minimalist, functional aesthetic. The primary background and extensive negative space are rendered in pure white (#FFFFFF, HSL: [0, 0, 100]), providing an expansive, clean canvas. Foreground elements, including all text, borders, dividers, and other high-contrast structural components, utilize a deep Obsidian Black (#1A1A1A, HSL: [0, 0, 10]). The sole accent color is a Professional Blue (#2563EB, HSL: [240, 83, 53]), used with utmost restraint. Its application is meticulously confined to primary call-to-action buttons (e.g., 'TH├èM V├ÇO GIß╗Ä H├ÇNG', 'Gß╗¼I'), critical status indicators (e.g., active navigation links, progress bars), and very specific interactive highlights, serving as the singular visual beacon for critical user actions and system feedback. No color blocking or gradients are used; colors are applied as solid fills.\n\n4.  **Typography Pairing**: Typography is the cornerstone of this design, functioning as the primary visual language and interaction cue. The typeface, `Manrope`, is selected for its modern, refined, and balanced characteristics, offering excellent legibility across various weights and sizes, crucial for an interface devoid of icons. A high-contrast typographic hierarchy is established using `Manrope` in varying weights (e.g., SemiBold for headlines, Regular for body text) and sizes, alongside judicious use of uppercase text for buttons and key labels (e.g., 'TH├èM V├ÇO GIß╗Ä H├ÇNG'). Line-heights and letter-spacing are carefully calibrated to enhance readability and create distinct visual blocks of information, compensating for the lack of graphical elements. All text labels, links, and buttons are in Vietnamese, as specified.\n\n5.  **Navigation Style**: The navigation system consists of a unified top navigation bar for global actions (e.g., 'Trang Chß╗º', 'Hß╗Öp Th╞░ Hß╗ç Thß╗æng', 'T├ái Khoß║ún') and a dynamic left sidebar. The sidebar's content is contextually sensitive, adapting to display role-specific links and functionalities (e.g., Seller-specific 'Quß║ún L├╜ Kho', Admin-specific 'Quß║ún L├╜ Ng╞░ß╗¥i D├╣ng'). Both navigation components are text-only, with active states clearly indicated by the Professional Blue accent color and/or a distinct 1px border, maintaining the flat, high-contrast aesthetic.\n\n6.  **Visual Elements**: Adhering strictly to the 'No-Icon' policy, all visual cues are replaced by precise, high-contrast typography and explicit text-based labels. No graphical icons (SVGs, font-based, 3D), illustrations, or photography are permitted anywhere in the interface. The design relies solely on the stark juxtaposition of text, borders, and whitespace to articulate functionality and aesthetics. Call-to-action elements are clearly defined by uppercase text labels (e.g., 'Gß╗¼I', 'X├ôA VI PHß║áM') and the accent color for primary actions.\n\n7.  **Spacing & Breathing Room**: Extensive use of whitespace (padding and margin) is a critical design tool for establishing clear information hierarchy and preventing visual clutter in this icon-free environment. A consistent 8px grid system underpins all spacing decisions, ensuring predictability and visual harmony. Generous padding within containers and around text blocks visually separates elements and directs user attention, creating a clean, breathable, and highly scannable interface despite the density of information required for B2B2C operations.\n\n8.  **Aesthetic Reference**: The overall aesthetic can be described as 'Utilitarian Brutalism meets Modern SaaS Clarity.' It draws inspiration from the unadorned honesty and functional directness of brutalist web design, combined with the clean, highly structured, and information-dense interfaces characteristic of contemporary enterprise SaaS platforms like early Linear or a text-only version of Notion. The design is unapologetically text-driven, valuing absolute clarity and efficiency above decorative elements, yet achieves a distinct, professional elegance through its rigorous adherence to a unified, high-contrast visual language.",
+        "font": "MANROPE",
+        "roundness": "ROUND_FOUR",
+        "saturation": 2
+      },
+      "deviceType": "DESKTOP",
+      "metadata": {
+        "userRole": "OWNER"
+      },
+      "name": "projects/15131741289395617020",
+      "origin": "STITCH",
+      "projectType": "TEXT_TO_UI_PRO",
+      "screenInstances": [
+        {
+          "height": 1024,
+          "id": "0d076edd47924dd3b7e0dc68c0cb859a",
+          "sourceScreen": "projects/15131741289395617020/screens/0d076edd47924dd3b7e0dc68c0cb859a",
+          "width": 1280,
+          "x": 4032
+        },
+        {
+          "height": 1070,
+          "id": "2c3680b616fd46e59c1c62b884d9801f",
+          "sourceScreen": "projects/15131741289395617020/screens/2c3680b616fd46e59c1c62b884d9801f",
+          "width": 1280,
+          "x": 8064
+        },
+        {
+          "height": 1288,
+          "id": "30df25ca25b3498b99a34e6cd72456c2",
+          "sourceScreen": "projects/15131741289395617020/screens/30df25ca25b3498b99a34e6cd72456c2",
+          "width": 1280,
+          "x": 12096
+        },
+        {
+          "height": 1026,
+          "id": "3c10b2f0910f4cb193bbb8296f8f8434",
+          "sourceScreen": "projects/15131741289395617020/screens/3c10b2f0910f4cb193bbb8296f8f8434",
+          "width": 1280,
+          "x": 6720
+        },
+        {
+          "height": 2117,
+          "id": "466949ab3d3945299bdda2b608de534e",
+          "sourceScreen": "projects/15131741289395617020/screens/466949ab3d3945299bdda2b608de534e",
+          "width": 1280,
+          "x": 6720,
+          "y": 2070
+        },
+        {
+          "height": 1473,
+          "id": "4fb3a0e727914200a71a897bdc474818",
+          "sourceScreen": "projects/15131741289395617020/screens/4fb3a0e727914200a71a897bdc474818",
+          "width": 1280,
+          "x": 2688
+        },
+        {
+          "height": 1962,
+          "id": "55f6030926a24bb8aafb99a2e301251b",
+          "sourceScreen": "projects/15131741289395617020/screens/55f6030926a24bb8aafb99a2e301251b",
+          "width": 1280,
+          "y": 2070
+        },
+        {
+          "height": 1105,
+          "id": "5fc6c5d7f30a4ddf98b00ce75f4ff237",
+          "sourceScreen": "projects/15131741289395617020/screens/5fc6c5d7f30a4ddf98b00ce75f4ff237",
+          "width": 1280,
+          "x": 10752
+        },
+        {
+          "height": 1097,
+          "id": "74862871073d448791ed72539a84f9f6",
+          "sourceScreen": "projects/15131741289395617020/screens/74862871073d448791ed72539a84f9f6",
+          "width": 1280,
+          "x": 9408
+        },
+        {
+          "height": 1814,
+          "id": "7afc90899cd540a2ba368044b103a105",
+          "sourceScreen": "projects/15131741289395617020/screens/7afc90899cd540a2ba368044b103a105",
+          "width": 1280,
+          "x": 1344
+        },
+        {
+          "height": 2204,
+          "id": "897620961ba44863829c291dff1d130c",
+          "sourceScreen": "projects/15131741289395617020/screens/897620961ba44863829c291dff1d130c",
+          "width": 1280,
+          "x": 1344,
+          "y": 2070
+        },
+        {
+          "height": 1024,
+          "id": "d33957245c6f4bc29e8c42bdc09cab65",
+          "sourceScreen": "projects/15131741289395617020/screens/d33957245c6f4bc29e8c42bdc09cab65",
+          "width": 1280,
+          "x": 4032,
+          "y": 2070
+        },
+        {
+          "height": 1465,
+          "id": "d57e85a1e6e9435cbb9c8857fe46be30",
+          "sourceScreen": "projects/15131741289395617020/screens/d57e85a1e6e9435cbb9c8857fe46be30",
+          "width": 1280,
+          "x": 5376
+        },
+        {
+          "height": 1537,
+          "id": "dd666dcdaf0b485688b79bf93d80b727",
+          "sourceScreen": "projects/15131741289395617020/screens/dd666dcdaf0b485688b79bf93d80b727",
+          "width": 1280,
+          "x": 2688,
+          "y": 2070
+        },
+        {
+          "height": 1535,
+          "id": "e40a1646445f4e90a70de958ed1acb93",
+          "sourceScreen": "projects/15131741289395617020/screens/e40a1646445f4e90a70de958ed1acb93",
+          "width": 1280
+        },
+        {
+          "height": 1033,
+          "id": "fd4dad2ff19f49988e928f71d2ac2b98",
+          "sourceScreen": "projects/15131741289395617020/screens/fd4dad2ff19f49988e928f71d2ac2b98",
+          "width": 1280,
+          "x": 5376,
+          "y": 2070
+        }
+      ],
+      "thumbnailScreenshot": {
+        "downloadUrl": "https://lh3.googleusercontent.com/aida/AOfcidUcvNoe21pPICNA_aHxCUT7-MzhIB6DOrH6COcFDBLn5sVsxMJaJXhNz64p_GNlYGWcDkis1LOWmcvCIdiHOPQ53atB-0OzESA_Xoi4SZ9Rf4I7WwYMwfnBcpIzF6xOMWNIA7GS43Q-ogNtzEhYyHVm6e0nLJyVjvrxtXWxC0L9ssmytFmzX3hab6m5Ld7MDHZKduDVqnOMs8LDtNa6GBjeEaC7T8sF9qJwiyCjG4vcjX-p5iQ5p6ZcO3Y",
+        "name": "projects/15131741289395617020/files/2b88e345c6804a92a57fc29921af2756"
+      },
+      "title": "Chi Tiß║┐t Sß║ún Phß║⌐m",
+      "updateTime": "2026-01-14T06:09:29.619977Z",
+      "visibility": "PRIVATE"
+    },
+    {
+      "createTime": "2025-12-17T10:28:10.674460Z",
+      "designTheme": {
+        "colorMode": "LIGHT",
+        "customColor": "#f9f506",
+        "font": "SPLINE_SANS",
+        "roundness": "ROUND_FULL",
+        "saturation": 2
+      },
+      "deviceType": "DESKTOP",
+      "metadata": {
+        "userRole": "OWNER"
+      },
+      "name": "projects/8739727939155310574",
+      "origin": "STITCH",
+      "projectType": "TEXT_TO_UI_PRO",
+      "screenInstances": [
+        {
+          "height": 1750,
+          "hidden": true,
+          "id": "5974383db43e48a9a4242d182378cf72",
+          "sourceScreen": "projects/8739727939155310574/screens/5974383db43e48a9a4242d182378cf72",
+          "width": 1280
+        },
+        {
+          "height": 1700,
+          "id": "adbaff357909415088aa23f52fd8a6f9",
+          "sourceScreen": "projects/8739727939155310574/screens/adbaff357909415088aa23f52fd8a6f9",
+          "width": 1345,
+          "x": 1344
+        }
+      ],
+      "thumbnailScreenshot": {
+        "downloadUrl": "https://lh3.googleusercontent.com/aida/AOfcidXzNKgGFejKuyVYEJvEYWqBXxyqkSExrJ9P7BVo8-yjxFPySMMEaayEZwZoFsdtRRh9-ldymY2el2HeQPucoTUeOpo8sc7IF0iZCcAV1-b9tT6qhuQcnS0Wv2hbHQfB5npFysPp5A3v0mo8Ly0cMbBEz7mRcQpPRcN3yFS7EwCMQY0XFAdEugfWpLX8fBC3ObmsmeeAGXHkTbxfiEkaoyCo2uqM1-T9hnqHolPFKnWOVkYjWI0zj9AHuH4",
+        "name": "projects/8739727939155310574/files/f0dd9fdd59fc4d028351ca2e2ec5f237"
+      },
+      "title": "Home Page",
+      "updateTime": "2025-12-20T09:26:28.418121Z",
+      "visibility": "PUBLIC"
+    },
+    {
+      "createTime": "2025-11-26T06:47:01.136613Z",
+      "designTheme": {
+        "colorMode": "DARK",
+        "customColor": "#13ec5b",
+        "font": "LEXEND",
+        "roundness": "ROUND_FULL",
+        "saturation": 2
+      },
+      "deviceType": "MOBILE",
+      "metadata": {
+        "userRole": "OWNER"
+      },
+      "name": "projects/8390095473693930911",
+      "origin": "STITCH",
+      "projectType": "TEXT_TO_UI_PRO",
+      "screenInstances": [
+        {
+          "height": 2232,
+          "id": "413ef4ba43014898837e19f42fb47972",
+          "sourceScreen": "projects/8390095473693930911/screens/413ef4ba43014898837e19f42fb47972",
+          "width": 390,
+          "x": 2559,
+          "y": -108
+        },
+        {
+          "height": 1078,
+          "id": "6f5673ac585a497c94cfc70cec2fd798",
+          "sourceScreen": "projects/8390095473693930911/screens/6f5673ac585a497c94cfc70cec2fd798",
+          "width": 390,
+          "x": 1601,
+          "y": -197
+        },
+        {
+          "height": 884,
+          "id": "76b6a703c3a94cc08d3c5281b7669a7b",
+          "sourceScreen": "projects/8390095473693930911/screens/76b6a703c3a94cc08d3c5281b7669a7b",
+          "width": 390,
+          "x": 917,
+          "y": 33
+        },
+        {
+          "height": 1579,
+          "id": "79d2383a755a4639b13212ee5651eabf",
+          "sourceScreen": "projects/8390095473693930911/screens/79d2383a755a4639b13212ee5651eabf",
+          "width": 390,
+          "x": -516,
+          "y": -207
+        },
+        {
+          "height": 1157,
+          "id": "8aa0ff024bff49d38ebb8699a1641b2a",
+          "sourceScreen": "projects/8390095473693930911/screens/8aa0ff024bff49d38ebb8699a1641b2a",
+          "width": 390,
+          "x": 908,
+          "y": 1036
+        },
+        {
+          "height": 1513,
+          "id": "98ba43b33fe2444c9a50d798c3a51f7b",
+          "sourceScreen": "projects/8390095473693930911/screens/98ba43b33fe2444c9a50d798c3a51f7b",
+          "width": 390,
+          "y": 2449
+        },
+        {
+          "height": 1054,
+          "id": "a4db80dea75e448d9f57264b4daadfd9",
+          "sourceScreen": "projects/8390095473693930911/screens/a4db80dea75e448d9f57264b4daadfd9",
+          "width": 390,
+          "x": 463,
+          "y": 33
+        },
+        {
+          "height": 1033,
+          "id": "c9f4c94ddcec4d41850220f9dacd7286",
+          "sourceScreen": "projects/8390095473693930911/screens/c9f4c94ddcec4d41850220f9dacd7286",
+          "width": 390,
+          "x": 454,
+          "y": 1036
+        },
+        {
+          "height": 884,
+          "id": "ee94b7d1e5d7452fa272af48cc5c23b9",
+          "sourceScreen": "projects/8390095473693930911/screens/ee94b7d1e5d7452fa272af48cc5c23b9",
+          "width": 390,
+          "x": 9,
+          "y": 33
+        }
+      ],
+      "thumbnailScreenshot": {
+        "downloadUrl": "https://lh3.googleusercontent.com/aida/AOfcidVEWH1nLD5WtIQtZ2xG0ACX0S2dqyIdty6qH6JqoncmNh_qA816Jz9U-xBprSZupb7TN-HWDFA_TYQxsZSWmUuONIxwj1DX2E0Ij6jV8odGjzxKJ-QNKJVOCKcLJP3bKfe9rOUgG_PP-rkAI68uZIjrus0YHfevOTJsLR9ZbC3UQe848MyzhdG0fVaXyDCzk2Xw590wsqJlp9zLqKrS8c8uvGw6xTZqDaPzS1QRarOJP6bikJiNurCZ2xY",
+        "name": "projects/8390095473693930911/files/d4e37712981e485f97b3b9c40a814a81"
+      },
+      "title": "Profile Setup",
+      "updateTime": "2025-12-17T10:24:54.992499Z",
+      "visibility": "PUBLIC"
+    },
+    {
+      "createTime": "2025-11-28T15:34:19.573197Z",
+      "designTheme": {
+        "colorMode": "LIGHT",
+        "customColor": "#13ec6a",
+        "font": "INTER",
+        "roundness": "ROUND_EIGHT",
+        "saturation": 2
+      },
+      "deviceType": "DESKTOP",
+      "metadata": {
+        "userRole": "OWNER"
+      },
+      "name": "projects/13083585273953488417",
+      "origin": "STITCH",
+      "projectType": "TEXT_TO_UI_PRO",
+      "screenInstances": [
+        {
+          "height": 1193,
+          "id": "0dd7edb9ef1743a59256016906d5053c",
+          "sourceScreen": "projects/13083585273953488417/screens/0dd7edb9ef1743a59256016906d5053c",
+          "width": 1280,
+          "x": 2360,
+          "y": 1389
+        },
+        {
+          "height": 1133,
+          "id": "3a4b16bea0724b0c8ac399fb75e31591",
+          "sourceScreen": "projects/13083585273953488417/screens/3a4b16bea0724b0c8ac399fb75e31591",
+          "width": 1280,
+          "x": 2360
+        },
+        {
+          "height": 50,
+          "id": "4fccd9ab-1cc1-4050-9afc-9a9d56381b5d",
+          "sourceScreen": "projects/13083585273953488417/screens/13425002520947156225",
+          "width": 952,
+          "y": 1389
+        },
+        {
+          "height": 222,
+          "id": "948e5216-c893-4823-a599-4d462eb3b45c",
+          "sourceScreen": "projects/13083585273953488417/screens/16216520986795593095",
+          "width": 959,
+          "x": 1016
+        },
+        {
+          "height": 50,
+          "id": "9c27da16-7949-48ea-b494-c0964fe30c2e",
+          "sourceScreen": "projects/13083585273953488417/screens/16216520986795593158",
+          "width": 952
+        },
+        {
+          "height": 800,
+          "id": "baf955eea14249d4a8e9fd7739647c7b",
+          "sourceScreen": "projects/13083585273953488417/screens/baf955eea14249d4a8e9fd7739647c7b",
+          "width": 1280,
+          "x": 1016
+        },
+        {
+          "height": 222,
+          "id": "bbaaf78c-1814-44b0-b61d-aaa281342e57",
+          "sourceScreen": "projects/13083585273953488417/screens/13425002520947156152",
+          "width": 959,
+          "x": 1016,
+          "y": 1389
+        },
+        {
+          "height": 800,
+          "id": "edfcc898e00e458ca178f127101b60f9",
+          "sourceScreen": "projects/13083585273953488417/screens/edfcc898e00e458ca178f127101b60f9",
+          "width": 1280,
+          "x": 1016,
+          "y": 1389
+        }
+      ],
+      "thumbnailScreenshot": {
+        "downloadUrl": "https://lh3.googleusercontent.com/aida/AOfcidWcGzOTuP1nmnbQsoB7JZQwDt3w_nyeeHk6ZXldg0pncosVDNnOmxzKohsG-6GEh4b2X4m5eR7y4_v-kbqaK6PgsRUUIFPdc_yO4YleTmn_jXy9gd61_ClC7B1w-3HDwyAo9ar-gbHlASttchG9kHDlZfz2hQ0Aa1uoo8cjm0XzoKdlinhh2J80UgUnYt3koj2QK0TcE-E_E3A49urKZ-mZsQYlo737lj-0JPqlqyx0wH8J03XD0uwlHW6q",
+        "name": "projects/13083585273953488417/files/7b1a3c2dddb4434ab2246b43a0f50e0a"
+      },
+      "title": "Redesigned Footer for QuickBuy",
+      "updateTime": "2025-11-28T15:37:38.116341Z",
+      "visibility": "PRIVATE"
+    },
+    {
+      "createTime": "2025-11-26T06:56:41.247156Z",
+      "designTheme": {
+        "colorMode": "DARK",
+        "customColor": "#13ec6d",
+        "font": "LEXEND",
+        "roundness": "ROUND_EIGHT",
+        "saturation": 3
+      },
+      "deviceType": "DESKTOP",
+      "metadata": {
+        "userRole": "OWNER"
+      },
+      "name": "projects/10653193838733640482",
+      "origin": "STITCH",
+      "projectType": "TEXT_TO_UI_PRO",
+      "screenInstances": [
+        {
+          "height": 800,
+          "id": "17cc278f4fa2478cab13d4fbb722710b",
+          "sourceScreen": "projects/10653193838733640482/screens/17cc278f4fa2478cab13d4fbb722710b",
+          "width": 1280,
+          "x": -123
+        },
+        {
+          "height": 1081,
+          "id": "1dbbe3be735a4471a82302857fd1cb2c",
+          "sourceScreen": "projects/10653193838733640482/screens/1dbbe3be735a4471a82302857fd1cb2c",
+          "width": 1280,
+          "x": 4032,
+          "y": 1078
+        },
+        {
+          "height": 977,
+          "id": "2f4094ced3eb4e6eb710f6f3fc288815",
+          "sourceScreen": "projects/10653193838733640482/screens/2f4094ced3eb4e6eb710f6f3fc288815",
+          "width": 1280,
+          "x": 1344,
+          "y": 1078
+        },
+        {
+          "height": 1011,
+          "id": "80ea80f2c3064c6f853084963b16efaa",
+          "sourceScreen": "projects/10653193838733640482/screens/80ea80f2c3064c6f853084963b16efaa",
+          "width": 1280,
+          "x": 2688,
+          "y": 1078
+        },
+        {
+          "height": 800,
+          "id": "bbb83f7ed5864fa69ca51770177f456b",
+          "sourceScreen": "projects/10653193838733640482/screens/bbb83f7ed5864fa69ca51770177f456b",
+          "width": 1280,
+          "y": 1078
+        },
+        {
+          "height": 1078,
+          "id": "d353000b3c294c7da716106f0a348f2e",
+          "sourceScreen": "projects/10653193838733640482/screens/d353000b3c294c7da716106f0a348f2e",
+          "width": 1280,
+          "x": 1473,
+          "y": -485
+        }
+      ],
+      "title": "User Login / Registration",
+      "updateTime": "2025-11-26T07:02:35.019935Z",
+      "visibility": "PUBLIC"
+    },
+    {
+      "createTime": "2025-11-26T06:44:39.682759Z",
+      "designTheme": {},
+      "metadata": {
+        "userRole": "OWNER"
+      },
+      "name": "projects/14347151065567907880",
+      "origin": "STITCH",
+      "projectType": "TEXT_TO_UI_PRO",
+      "updateTime": "2025-11-26T06:46:35.250920Z",
+      "visibility": "PRIVATE"
+    },
+    {
+      "createTime": "2025-11-21T13:24:41.174514Z",
+      "designTheme": {
+        "colorMode": "LIGHT",
+        "customColor": "#ee7c2b",
+        "font": "WORK_SANS",
+        "roundness": "ROUND_EIGHT",
+        "saturation": 2
+      },
+      "deviceType": "DESKTOP",
+      "metadata": {
+        "userRole": "OWNER"
+      },
+      "name": "projects/184882964575973134",
+      "origin": "STITCH",
+      "projectType": "TEXT_TO_UI_PRO",
+      "screenInstances": [
+        {
+          "height": 1951,
+          "id": "a700ae1ee64942e2adac90471f2faf55",
+          "sourceScreen": "projects/184882964575973134/screens/a700ae1ee64942e2adac90471f2faf55",
+          "width": 1280,
+          "x": 77,
+          "y": 2705
+        },
+        {
+          "height": 1951,
+          "id": "aedeb66f12814f2b83004f9596f7c33f",
+          "sourceScreen": "projects/184882964575973134/screens/aedeb66f12814f2b83004f9596f7c33f",
+          "width": 1280,
+          "x": -39,
+          "y": -577
+        }
+      ],
+      "thumbnailScreenshot": {
+        "downloadUrl": "https://lh3.googleusercontent.com/aida/AOfcidUyOSyGD4sGQ9e93lTFjxlFNbOBHTIhm_d4AOO7DofXTJE3xCvqk68OUds7g_jiveeLXr8BtYiWXc1uuzJ3HtPmy_2Fm1vAAMSQKgXPD1KEEaVD--7sppGHQ0AYjxWQgliKs9v2kz2GDUmfhagUqJT5QeGIwPMTAS3zCbo4pgFqK4FEPbGCaIm-VeqZjz0pQ6Q5ypNUZgJMuqztl4mwfbuyPP7U5YfiTqltCQVx0ZN-K4ndcuD06xCOew",
+        "name": "projects/184882964575973134/files/b346bcecd65b4593860b10342d8f0aec"
+      },
+      "title": "Supermarket Homepage",
+      "updateTime": "2025-11-21T14:20:23.772792Z",
+      "visibility": "PRIVATE"
+    }
+  ]
+}
