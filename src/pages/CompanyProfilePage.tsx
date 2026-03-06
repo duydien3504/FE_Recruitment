@@ -34,6 +34,8 @@ export default function CompanyProfilePage() {
     const [company, setCompany] = useState<CompanyDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [isFollowing, setIsFollowing] = useState(false);
+    const [followLoading, setFollowLoading] = useState(false);
 
     useEffect(() => {
         const fetchCompanyDetail = async () => {
@@ -49,6 +51,7 @@ export default function CompanyProfilePage() {
 
                 const json = await response.json();
                 setCompany(json.data);
+                checkFollowStatus(json.data.companyId); // Check follow status
             } catch (err: any) {
                 console.error("Error fetching company details:", err);
                 setError(err.message || 'Could not load company info');
@@ -57,8 +60,46 @@ export default function CompanyProfilePage() {
             }
         };
 
+        const checkFollowStatus = async (companyId: string) => {
+            try {
+                const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+                const response = await fetchWithAuth(`${apiUrl}/api/v1/follow/check?companyId=${companyId}`);
+                if (response.ok) {
+                    const json = await response.json();
+                    setIsFollowing(json.isFollowing || json.data?.isFollowing || false);
+                }
+            } catch (error) {
+                console.error("Error checking follow status:", error);
+            }
+        };
+
         fetchCompanyDetail();
     }, [id]);
+
+    const handleFollowToggle = async () => {
+        if (!company) return;
+        setFollowLoading(true);
+        try {
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+            const method = isFollowing ? 'DELETE' : 'POST';
+
+            const response = await fetchWithAuth(`${apiUrl}/api/v1/follow`, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ companyId: company.companyId })
+            });
+
+            if (response.ok) {
+                setIsFollowing(!isFollowing);
+            } else {
+                console.error("Failed to toggle follow status");
+            }
+        } catch (error) {
+            console.error("Error toggling follow:", error);
+        } finally {
+            setFollowLoading(false);
+        }
+    };
 
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString('vi-VN', {
@@ -144,8 +185,15 @@ export default function CompanyProfilePage() {
                             </div>
                         </div>
                         <div className="flex-shrink-0">
-                            <button className="px-6 py-2.5 bg-primary text-white font-semibold rounded-full hover:bg-blue-600 transition-colors shadow-sm">
-                                + Theo dõi
+                            <button
+                                onClick={handleFollowToggle}
+                                disabled={followLoading}
+                                className={`px-6 py-2.5 font-semibold rounded-full transition-colors shadow-sm ${isFollowing
+                                    ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                    : 'bg-primary text-white hover:bg-blue-600'
+                                    }`}
+                            >
+                                {followLoading ? '...' : (isFollowing ? 'Đang theo dõi' : '+ Theo dõi')}
                             </button>
                         </div>
                     </div>

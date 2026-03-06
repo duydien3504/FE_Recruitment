@@ -5,7 +5,7 @@ import Footer from '../components/Footer';
 import JobCard from '../components/JobCard';
 import { fetchWithAuth } from '../utils/auth';
 import { toast } from 'sonner';
-import { FileText, Upload, Trash2, Eye, X, Loader2, Sparkles, TrendingUp } from 'lucide-react';
+import { FileText, Upload, Trash2, Eye, X, Loader2, Sparkles, TrendingUp, Star } from 'lucide-react';
 
 interface Resume {
     id: string;
@@ -14,6 +14,7 @@ interface Resume {
     url?: string;
     fileUrl?: string;
     created_at: string;
+    isPrimary?: boolean;
 }
 
 interface SuggestedJob {
@@ -205,6 +206,29 @@ export default function ResumesPage() {
         }
     };
 
+    const handleSetPrimary = async (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        try {
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+            const response = await fetchWithAuth(`${apiUrl}/api/v1/resumes/${id}/set-main`, {
+                method: 'PATCH'
+            });
+
+            if (response.ok) {
+                toast.success("Đã đặt làm CV chính");
+                setResumes(prev => prev.map(r => ({
+                    ...r,
+                    isPrimary: r.id === id
+                })));
+            } else {
+                toast.error("Không thể đặt làm CV chính");
+            }
+        } catch (error) {
+            console.error("Error setting primary resume:", error);
+            toast.error("Lỗi hệ thống");
+        }
+    };
+
     const handleViewResume = async (resume: Resume) => {
         setViewingResume(resume);
         setModalLoading(true);
@@ -309,6 +333,13 @@ export default function ResumesPage() {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-3">
+                                        <button
+                                            onClick={(e) => handleSetPrimary(resume.id, e)}
+                                            className={`p-3 rounded-xl transition-all ${resume.isPrimary ? 'text-yellow-500 bg-yellow-50' : 'text-gray-400 hover:text-yellow-500 hover:bg-yellow-50'}`}
+                                            title={resume.isPrimary ? "CV Chính" : "Đặt làm CV chính"}
+                                        >
+                                            <Star size={20} fill={resume.isPrimary ? "currentColor" : "none"} />
+                                        </button>
                                         <button
                                             onClick={(e) => { e.stopPropagation(); handleViewResume(resume); }}
                                             className="p-3 text-gray-400 hover:text-primary hover:bg-blue-50 rounded-xl transition-all"

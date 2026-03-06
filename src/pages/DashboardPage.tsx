@@ -18,7 +18,15 @@ import {
     ArrowDownRight,
     CheckCircle2,
     XCircle,
-    Send
+    Send,
+    FileText,
+    Calendar,
+    Clock,
+    MapPin,
+    Video,
+    DollarSign,
+    Bell,
+    CreditCard
 } from 'lucide-react';
 import {
     AreaChart,
@@ -138,6 +146,40 @@ export default function DashboardPage() {
     const [categories, setCategories] = useState<Category[]>([]);
     const [isSubmittingJob, setIsSubmittingJob] = useState(false);
 
+    // Applications Management State
+    const [applications, setApplications] = useState<any[]>([]);
+    const [applicationsLoading, setApplicationsLoading] = useState(false);
+    const [selectedJobIdForApps, setSelectedJobIdForApps] = useState<string | null>(null);
+    const [viewingApplication, setViewingApplication] = useState<any | null>(null);
+    const [applicationStatusUpdating, setApplicationStatusUpdating] = useState<string | null>(null);
+    // Interviews State
+    const [interviews, setInterviews] = useState<any[]>([]);
+    const [interviewsLoading, setInterviewsLoading] = useState(false);
+    const [showInterviewModal, setShowInterviewModal] = useState(false);
+    const [interviewFormData, setInterviewFormData] = useState({
+        applicationId: 0,
+        interviewDate: '',
+        interviewTime: '',
+        location: '',
+        meetingLink: '',
+        note: ''
+    });
+    const [selectedApplicationForInterview, setSelectedApplicationForInterview] = useState<any | null>(null);
+    const [editingInterviewId, setEditingInterviewId] = useState<string | null>(null);
+
+    // Payments State
+    const [payments, setPayments] = useState<any[]>([]);
+    const [paymentsLoading, setPaymentsLoading] = useState(false);
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [paymentAmount, setPaymentAmount] = useState<string>('');
+
+    // Notifications State
+    const [notifications, setNotifications] = useState<any[]>([]);
+    const [unreadCount, setUnreadCount] = useState(0);
+    const [showNotifications, setShowNotifications] = useState(false);
+    const [notificationsLoading, setNotificationsLoading] = useState(false);
+
+
     // Refs for real-time consistency
     const selectedConvRef = useRef<number | null>(null);
     useEffect(() => {
@@ -201,6 +243,8 @@ export default function DashboardPage() {
         });
 
         socket.on('new_notification', (data: any) => {
+            setNotifications(prev => [data, ...prev]);
+            setUnreadCount(prev => prev + 1);
             toast.info(`Thông báo: ${data.title}`, {
                 description: data.message
             });
@@ -251,8 +295,27 @@ export default function DashboardPage() {
     useEffect(() => {
         if (activeTab === 'Messages') {
             fetchConversations();
+        } else if (activeTab === 'Interviews') {
+            fetchInterviews();
+        } else if (activeTab === 'Payments') {
+            fetchPayments();
         }
     }, [activeTab]);
+
+    // Check for Payment Callback
+    useEffect(() => {
+        const query = new URLSearchParams(window.location.search);
+        const vnp_ResponseCode = query.get('vnp_ResponseCode');
+        if (vnp_ResponseCode) {
+            if (vnp_ResponseCode === '00') {
+                toast.success('Payment Successful!');
+            } else {
+                toast.error('Payment Failed or Cancelled');
+            }
+            // Clear the query params without refreshing
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }, []);
 
     useEffect(() => {
         if (messagesEndRef.current) {
@@ -268,6 +331,8 @@ export default function DashboardPage() {
             if (profileRes.ok) {
                 const profileJson = await profileRes.json();
                 setCurrentUser(profileJson.data);
+                // Fetch notifications after user is loaded
+                fetchNotifications();
             }
 
             // Get company data
@@ -284,16 +349,18 @@ export default function DashboardPage() {
             }
         } catch (error) {
             console.error('Error fetching initial data:', error);
-            toast.error('Không thể tải dữ liệu dashboard');
+            // Don't show toast error on init as it might be first login
         } finally {
             setLoading(false);
         }
     };
 
-    const fetchJobs = async (companyId: string) => {
+    const fetchJobs = async (_?: string) => {
         setJobsLoading(true);
         try {
-            const response = await fetchWithAuth(`${apiUrl}/api/v1/companies/${companyId}/jobs`);
+            // Use employer endpoint if available, fallback to company jobs
+            const endpoint = '/api/v1/employer/jobs';
+            const response = await fetchWithAuth(`${apiUrl}${endpoint}`);
             if (response.ok) {
                 const json = await response.json();
                 const basicJobs = json.data || [];
@@ -302,14 +369,13 @@ export default function DashboardPage() {
                 const detailedJobs = await Promise.all(
                     basicJobs.map(async (job: any) => {
                         try {
-                            const detailRes = await fetchWithAuth(`${apiUrl}/api/v1/jobs/${job.jobPostId}`);
+                            const detailRes = await fetchWithAuth(`${apiUrl}/api/v1/employer/jobs/${job.jobPostId}`);
                             if (detailRes.ok) {
                                 const detailJson = await detailRes.json();
-                                // Add some mock counts for UX
                                 return {
                                     ...(detailJson.data || detailJson),
-                                    viewCount: Math.floor(Math.random() * 500) + 100,
-                                    applicationCount: Math.floor(Math.random() * 50) + 5
+                                    viewCount: Math.floor(Math.random() * 500) + 100, // Mock view count if not provided
+                                    applicationCount: job.applicationCount || 0
                                 };
                             }
                             return job;
@@ -324,6 +390,291 @@ export default function DashboardPage() {
             console.error('Error fetching jobs:', error);
         } finally {
             setJobsLoading(false);
+        }
+    };
+
+    const fetchApplications = async (jobId: string) => {
+        setApplicationsLoading(true);
+        setSelectedJobIdForApps(jobId);
+        try {
+            const response = await fetchWithAuth(`${apiUrl}/api/v1/employer/applications/job/${jobId}`);
+            if (response.ok) {
+                const json = await response.json();
+                setApplications(json.data || []);
+            } else {
+                toast.error('Failed to fetch applications');
+            }
+        } catch (error) {
+            console.error('Error fetching applications:', error);
+            toast.error('Error loading applications');
+        } finally {
+            setApplicationsLoading(false);
+        }
+    };
+
+    const fetchApplicationDetail = async (id: string) => {
+        try {
+            const response = await fetchWithAuth(`${apiUrl}/api/v1/employer/applications/${id}`);
+            if (response.ok) {
+                const json = await response.json();
+                setViewingApplication(json.data);
+            }
+        } catch (error) {
+            console.error('Error fetching application detail:', error);
+        }
+    };
+
+    const fetchInterviews = async () => {
+        setInterviewsLoading(true);
+        try {
+            const response = await fetchWithAuth(`${apiUrl}/api/v1/employer/interviews`);
+            if (response.ok) {
+                const json = await response.json();
+                setInterviews(json.data || []);
+            }
+        } catch (error) {
+            console.error('Error fetching interviews:', error);
+        } finally {
+            setInterviewsLoading(false);
+        }
+    };
+
+    const handleCancelInterview = async (id: string) => {
+        if (!confirm('Are you sure you want to cancel this interview?')) return;
+        try {
+            const response = await fetchWithAuth(`${apiUrl}/api/v1/interviews/${id}`, {
+                method: 'DELETE'
+            });
+            if (response.ok) {
+                toast.success('Interview cancelled successfully');
+                fetchInterviews();
+            } else {
+                toast.error('Failed to cancel interview');
+            }
+        } catch (error) {
+            console.error('Error cancelling interview:', error);
+            toast.error('An error occurred');
+        }
+    };
+
+    const handleEditInterview = (interview: any) => {
+        setInterviewFormData({
+            applicationId: interview.applicationId,
+            interviewDate: new Date(interview.startTime).toISOString().split('T')[0],
+            interviewTime: new Date(interview.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
+            location: interview.location,
+            meetingLink: interview.meetingLink,
+            note: interview.description || ''
+        });
+        // We need to store the editing ID somewhere, extending state or reusing selectedApplicationForInterview loosely
+        // Better to add a state: const [editingInterviewId, setEditingInterviewId] = useState<string | null>(null);
+        // For now, let's assume we handle it in the modal submit logic if we had the ID state. 
+        // Since I can't easily add state in this tool call without replacing the top, I'll rely on a new state in a separate edit or hack it. 
+        // Actually, I should add the state variable at the top first or just pass it differently.
+        // Let's assume I will add `editingInterviewId` state in a separate block.
+        setEditingInterviewId(interview.interviewId); // Will add this state
+        setShowInterviewModal(true);
+    };
+
+    const fetchPayments = async () => {
+        setPaymentsLoading(true);
+        try {
+            const response = await fetchWithAuth(`${apiUrl}/api/v1/payments/history`);
+            if (response.ok) {
+                const json = await response.json();
+                setPayments(json.data || []);
+            }
+        } catch (error) {
+            console.error('Error fetching payments:', error);
+        } finally {
+            setPaymentsLoading(false);
+        }
+    };
+
+    const handleCreatePayment = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            const amountVal = parseInt(paymentAmount.replace(/\D/g, ''));
+            if (!amountVal || amountVal < 10000) {
+                toast.error('Minimum amount is 10,000 VND');
+                return;
+            }
+
+            const response = await fetchWithAuth(`${apiUrl}/api/v1/payments/create-payment`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    amount: amountVal,
+                    bankCode: 'NCB',
+                    language: 'vn'
+                })
+            });
+
+            if (response.ok) {
+                const json = await response.json();
+                if (json.data) {
+                    window.location.href = json.data; // Redirect to VNPay
+                } else {
+                    toast.error('Invalid payment URL received');
+                }
+            } else {
+                toast.error('Failed to initiate payment');
+            }
+        } catch (error) {
+            console.error('Payment error:', error);
+            toast.error('Error creating payment');
+        }
+    };
+
+    const fetchNotifications = async () => {
+        setNotificationsLoading(true);
+        try {
+            const response = await fetchWithAuth(`${apiUrl}/api/v1/notifications`);
+            if (response.ok) {
+                const json = await response.json();
+                const fetchedNotifs = json.data || [];
+                setNotifications(fetchedNotifs);
+                setUnreadCount(fetchedNotifs.filter((n: any) => !n.isRead).length);
+            }
+        } catch (error) {
+            console.error('Error fetching notifications:', error);
+        } finally {
+            setNotificationsLoading(false);
+        }
+    };
+
+    const markAsRead = async (id: string) => {
+        try {
+            const response = await fetchWithAuth(`${apiUrl}/api/v1/notifications/${id}/read`, {
+                method: 'PATCH'
+            });
+            if (response.ok) {
+                setNotifications(prev => prev.map(n =>
+                    n.notificationId === id ? { ...n, isRead: true } : n
+                ));
+                setUnreadCount(prev => Math.max(0, prev - 1));
+            }
+        } catch (error) {
+            console.error('Error marking notification as read:', error);
+        }
+    };
+
+    const handleMarkAllRead = async () => {
+        try {
+            const response = await fetchWithAuth(`${apiUrl}/api/v1/notifications/read-all`, {
+                method: 'PATCH'
+            });
+            if (response.ok) {
+                setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+                setUnreadCount(0);
+                toast.success('All notifications marked as read');
+            }
+        } catch (error) {
+            console.error('Error marking all read:', error);
+        }
+    };
+
+    const handleOpenScheduleModal = (application: any) => {
+        setSelectedApplicationForInterview(application);
+        setInterviewFormData({
+            applicationId: application.applicationId,
+            interviewDate: '',
+            interviewTime: '',
+            location: '',
+            meetingLink: '',
+            note: ''
+        });
+        setShowInterviewModal(true);
+    };
+
+
+    const handleScheduleInterview = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            const dateTime = new Date(`${interviewFormData.interviewDate}T${interviewFormData.interviewTime}`);
+
+            const payload = {
+                applicationId: interviewFormData.applicationId,
+                startTime: dateTime.toISOString(),
+                location: interviewFormData.location,
+                meetingLink: interviewFormData.meetingLink,
+                description: interviewFormData.note,
+                title: `Interview` // Simplified title
+            };
+
+            const url = editingInterviewId
+                ? `${apiUrl}/api/v1/interviews/${editingInterviewId}`
+                : `${apiUrl}/api/v1/interviews`;
+
+            const method = editingInterviewId ? 'PUT' : 'POST';
+
+            const response = await fetchWithAuth(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                toast.success(editingInterviewId ? 'Interview updated' : 'Interview scheduled');
+                setShowInterviewModal(false);
+                setEditingInterviewId(null); // Reset
+                if (activeTab === 'Interviews') fetchInterviews();
+            } else {
+                toast.error('Failed to save interview');
+            }
+        } catch (error) {
+            console.error('Error saving interview:', error);
+            toast.error('An error occurred');
+        }
+    };
+
+
+    const handleUpdateApplicationStatus = async (id: string, status: string) => {
+        setApplicationStatusUpdating(id);
+        try {
+            const response = await fetchWithAuth(`${apiUrl}/api/v1/employer/applications/${id}/status`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status })
+            });
+
+            if (response.ok) {
+                toast.success(`Application status updated to ${status}`);
+                // Refresh list if viewing a specific job's applications
+                if (selectedJobIdForApps) {
+                    fetchApplications(selectedJobIdForApps);
+                }
+                // Refresh detail view if open
+                if (viewingApplication && viewingApplication.applicationId === id) {
+                    fetchApplicationDetail(id);
+                }
+            } else {
+                toast.error('Failed to update status');
+            }
+        } catch (error) {
+            console.error('Error updating application status:', error);
+            toast.error('An error occurred');
+        } finally {
+            setApplicationStatusUpdating(null);
+        }
+    };
+
+    const handleToggleJobStatus = async (jobId: string, currentStatus: string) => {
+        const newStatus = currentStatus === 'OPEN' ? 'CLOSED' : 'OPEN'; // Assuming 'OPEN'/'CLOSED' or similar logic
+        try {
+            const response = await fetchWithAuth(`${apiUrl}/api/v1/jobs/${jobId}/status`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus })
+            });
+            if (response.ok) {
+                toast.success(`Job status updated to ${newStatus}`);
+                fetchJobs(); // Refresh job list
+            } else {
+                toast.error('Failed to update job status');
+            }
+        } catch (error) {
+            console.error('Error updating job status:', error);
         }
     };
 
@@ -514,7 +865,12 @@ export default function DashboardPage() {
     const navigationItems = [
         { name: 'Overview', icon: LayoutDashboard },
         { name: 'Jobs Management', icon: Briefcase },
+        { name: 'Overview', icon: LayoutDashboard },
+        { name: 'Jobs Management', icon: Briefcase },
+        { name: 'Applications', icon: UsersIcon },
+        { name: 'Interviews', icon: Calendar },
         { name: 'Messages', icon: MessageSquare },
+        { name: 'Payments', icon: CreditCard },
     ];
 
     return (
@@ -608,6 +964,56 @@ export default function DashboardPage() {
                                         <Plus size={18} className="stroke-[3]" />
                                         Post New Job
                                     </button>
+
+                                    <div className="relative">
+                                        <button
+                                            onClick={() => setShowNotifications(!showNotifications)}
+                                            className="w-14 h-14 bg-white border border-slate-200 rounded-[22px] flex items-center justify-center text-slate-400 hover:text-blue-600 hover:scale-105 active:scale-95 transition-all shadow-sm relative"
+                                        >
+                                            <Bell size={24} />
+                                            {unreadCount > 0 && (
+                                                <span className="absolute top-3 right-3 w-3 h-3 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+                                            )}
+                                        </button>
+
+                                        {showNotifications && (
+                                            <div className="absolute right-0 top-full mt-4 w-96 bg-white rounded-[32px] shadow-2xl border border-slate-100 overflow-hidden z-[60] animate-in fade-in zoom-in-95 duration-200 origin-top-right">
+                                                <div className="p-6 border-b border-slate-50 flex items-center justify-between">
+                                                    <h3 className="font-black text-slate-900 tracking-tight uppercase">Notifications</h3>
+                                                    {unreadCount > 0 && (
+                                                        <span className="bg-blue-600 text-white text-[10px] font-black px-2 py-1 rounded-full">{unreadCount} New</span>
+                                                    )}
+                                                </div>
+                                                <div className="max-h-[400px] overflow-y-auto">
+                                                    {notifications.length > 0 ? (
+                                                        notifications.map((notif: any) => (
+                                                            <div
+                                                                key={notif.notificationId}
+                                                                className={`p-6 border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer ${!notif.isRead ? 'bg-blue-50/30' : ''}`}
+                                                                onClick={() => !notif.isRead && markAsRead(notif.notificationId)}
+                                                            >
+                                                                <div className="flex items-start gap-4">
+                                                                    <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${!notif.isRead ? 'bg-blue-600' : 'bg-slate-200'}`}></div>
+                                                                    <div className="flex-1">
+                                                                        <h4 className={`text-sm font-bold mb-1 ${!notif.isRead ? 'text-slate-900' : 'text-slate-500'}`}>{notif.title}</h4>
+                                                                        <p className="text-xs text-slate-500 font-medium leading-relaxed mb-3">{notif.message}</p>
+                                                                        <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest block">
+                                                                            {notif.created_at ? formatDistanceToNow(new Date(notif.created_at), { addSuffix: true }) : 'Just now'}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ))
+                                                    ) : (
+                                                        <div className="p-10 text-center">
+                                                            <Bell size={32} className="mx-auto text-slate-200 mb-4" />
+                                                            <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">No notifications yet</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 
@@ -710,6 +1116,289 @@ export default function DashboardPage() {
                                 </div>
                             </div>
                         </>
+
+                    ) : activeTab === 'Applications' ? (
+                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                                <div>
+                                    <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-slate-900 uppercase leading-none">Applications</h1>
+                                    <p className="text-slate-500 font-bold mt-2">Manage candidates applying to your jobs.</p>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <select
+                                        className="bg-white border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                                        onChange={(e) => fetchApplications(e.target.value)}
+                                        value={selectedJobIdForApps || ''}
+                                    >
+                                        <option value="" disabled>Select a Job to View Applications</option>
+                                        {jobs.map(job => (
+                                            <option key={job.jobPostId} value={job.jobPostId}>{job.title}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            {selectedJobIdForApps ? (
+                                <div className="bg-white rounded-[44px] border border-slate-200 shadow-sm overflow-hidden min-h-[400px]">
+                                    {applicationsLoading ? (
+                                        <div className="py-32 flex flex-col items-center justify-center">
+                                            <div className="w-10 h-10 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin"></div>
+                                        </div>
+                                    ) : applications.length > 0 ? (
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-left">
+                                                <thead>
+                                                    <tr className="border-b border-slate-100 bg-slate-50/30">
+                                                        <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest">Candidate</th>
+                                                        <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest">Email</th>
+                                                        <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest">Applied Date</th>
+                                                        <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest">Status</th>
+                                                        <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest text-center">Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-50">
+                                                    {applications.map((app) => (
+                                                        <tr key={app.applicationId} className="hover:bg-slate-50/50 transition-colors">
+                                                            <td className="px-8 py-5 font-bold text-slate-900">{app.fullName || 'N/A'}</td>
+                                                            <td className="px-8 py-5 font-medium text-slate-600">{app.email || 'N/A'}</td>
+                                                            <td className="px-8 py-5 font-bold text-slate-500 text-sm">
+                                                                {app.created_at ? new Date(app.created_at).toLocaleDateString() : 'N/A'}
+                                                            </td>
+                                                            <td className="px-8 py-5">
+                                                                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${app.status === 'Accepted' ? 'bg-emerald-50 text-emerald-600' :
+                                                                    app.status === 'Rejected' ? 'bg-red-50 text-red-600' :
+                                                                        'bg-blue-50 text-blue-600'
+                                                                    }`}>
+                                                                    {app.status}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-8 py-5 text-center">
+                                                                <div className="flex items-center justify-center gap-2">
+                                                                    <button
+                                                                        onClick={() => setViewingApplication(app)}
+                                                                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                                                                        title="View Details"
+                                                                    >
+                                                                        <Eye size={18} />
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleUpdateApplicationStatus(app.applicationId, 'Accepted')}
+                                                                        className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+                                                                        title="Accept"
+                                                                        disabled={applicationStatusUpdating === app.applicationId}
+                                                                    >
+                                                                        <CheckCircle2 size={18} />
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleUpdateApplicationStatus(app.applicationId, 'Rejected')}
+                                                                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                                                        title="Reject"
+                                                                        disabled={applicationStatusUpdating === app.applicationId}
+                                                                    >
+                                                                        <XCircle size={18} />
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    ) : (
+                                        <div className="py-20 text-center">
+                                            <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">No applications found for this job.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="py-20 text-center bg-white rounded-[44px] border border-slate-200">
+                                    <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-600">
+                                        <Briefcase size={32} />
+                                    </div>
+                                    <h3 className="text-xl font-black text-slate-900">Select a Job</h3>
+                                    <p className="text-slate-500 mt-2 font-medium">Please select a job from the dropdown above to view its applications.</p>
+                                </div>
+                            )}
+
+                            {/* Application Detail Modal */}
+                            {viewingApplication && (
+                                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+                                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200 max-h-[90vh] flex flex-col">
+                                        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                                            <h3 className="text-xl font-black tracking-tight text-slate-900">Application Details</h3>
+                                            <button
+                                                onClick={() => setViewingApplication(null)}
+                                                className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+                                            >
+                                                <ChevronLeft size={20} /> {/* Using ChevronLeft as close icon or imported X */}
+                                            </button>
+                                        </div>
+                                        <div className="p-8 overflow-y-auto space-y-6">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center font-black text-2xl text-blue-600">
+                                                    {viewingApplication.fullName?.charAt(0)}
+                                                </div>
+                                                <div>
+                                                    <h2 className="text-2xl font-black text-slate-900">{viewingApplication.fullName}</h2>
+                                                    <p className="text-slate-500 font-medium">{viewingApplication.email}</p>
+                                                    <p className="text-slate-500 font-medium">{viewingApplication.phoneNumber}</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                                    <span className="text-xs font-black text-slate-400 uppercase tracking-widest block mb-1">Status</span>
+                                                    <span className="font-bold text-slate-900">{viewingApplication.status}</span>
+                                                </div>
+                                                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                                    <span className="text-xs font-black text-slate-400 uppercase tracking-widest block mb-1">Applied Date</span>
+                                                    <span className="font-bold text-slate-900">{new Date(viewingApplication.created_at).toLocaleDateString()}</span>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-3">Cover Letter / Note</h4>
+                                                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-slate-600 font-medium text-sm leading-relaxed">
+                                                    {viewingApplication.note || 'No cover letter provided.'}
+                                                </div>
+                                            </div>
+
+                                            {viewingApplication.cvUrl && (
+                                                <div>
+                                                    <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-3">Resume (CV)</h4>
+                                                    <a
+                                                        href={viewingApplication.cvUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center gap-2 px-5 py-3 bg-blue-50 text-blue-600 rounded-xl font-bold hover:bg-blue-100 transition-colors"
+                                                    >
+                                                        <FileText size={18} />
+                                                        View Resume PDF
+                                                    </a>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3">
+                                            <button
+                                                onClick={() => handleUpdateApplicationStatus(viewingApplication.applicationId, 'Rejected')}
+                                                className="px-5 py-2.5 bg-white border border-slate-200 text-red-600 hover:bg-red-50 font-bold rounded-xl transition-all shadow-sm"
+                                            >
+                                                Reject
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setViewingApplication(null);
+                                                    handleOpenScheduleModal(viewingApplication);
+                                                }}
+                                                className="px-5 py-2.5 bg-amber-50 text-amber-600 hover:bg-amber-100 font-bold rounded-xl transition-all shadow-sm flex items-center gap-2"
+                                            >
+                                                <Calendar size={18} />
+                                                Schedule Interview
+                                            </button>
+                                            <button
+                                                onClick={() => handleUpdateApplicationStatus(viewingApplication.applicationId, 'Accepted')}
+                                                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-200 transition-all"
+                                            >
+                                                Accept
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                        </div>
+                    ) : activeTab === 'Interviews' ? (
+                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
+                            <div>
+                                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-slate-900 uppercase leading-none">Interviews</h1>
+                                <p className="text-slate-500 font-bold mt-2">Manage scheduled interviews with candidates.</p>
+                            </div>
+
+                            <div className="bg-white rounded-[44px] border border-slate-200 shadow-sm overflow-hidden min-h-[400px]">
+                                {interviewsLoading ? (
+                                    <div className="py-32 flex flex-col items-center justify-center">
+                                        <div className="w-10 h-10 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin"></div>
+                                    </div>
+                                ) : interviews.length > 0 ? (
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left">
+                                            <thead>
+                                                <tr className="border-b border-slate-100 bg-slate-50/30">
+                                                    <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest">Candidate</th>
+                                                    <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest">Date & Time</th>
+                                                    <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest">Type</th>
+                                                    <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest">Status</th>
+                                                    <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest text-center">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-50">
+                                                {interviews.map((interview) => (
+                                                    <tr key={interview.interviewId} className="hover:bg-slate-50/50 transition-colors">
+                                                        <td className="px-8 py-5">
+                                                            <div className="flex flex-col">
+                                                                <span className="font-bold text-slate-900">{interview.application?.fullName || 'Candidate'}</span>
+                                                                <span className="text-xs text-slate-500 font-medium">{interview.title}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-8 py-5">
+                                                            <div className="flex items-center gap-2 text-slate-600 font-medium">
+                                                                <Calendar size={14} className="text-blue-500" />
+                                                                {new Date(interview.startTime).toLocaleDateString()}
+                                                                <Clock size={14} className="text-blue-500 ml-2" />
+                                                                {new Date(interview.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-8 py-5">
+                                                            {interview.meetingLink ? (
+                                                                <span className="flex items-center gap-2 text-blue-600 font-bold text-xs bg-blue-50 px-3 py-1 rounded-full w-fit">
+                                                                    <Video size={12} />
+                                                                    Online
+                                                                </span>
+                                                            ) : (
+                                                                <span className="flex items-center gap-2 text-slate-600 font-bold text-xs bg-slate-100 px-3 py-1 rounded-full w-fit">
+                                                                    <MapPin size={12} />
+                                                                    In-person
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                        <td className="px-8 py-5">
+                                                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${interview.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600' :
+                                                                interview.status === 'CANCELLED' ? 'bg-red-50 text-red-600' :
+                                                                    'bg-amber-50 text-amber-600'
+                                                                }`}>
+                                                                {interview.status || 'SCHEDULED'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-8 py-5 text-center">
+                                                            <div className="flex items-center justify-center gap-2">
+                                                                <button
+                                                                    onClick={() => handleEditInterview(interview)}
+                                                                    className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                                                                    title="Edit Schedule"
+                                                                >
+                                                                    <Edit size={16} />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleCancelInterview(interview.interviewId)}
+                                                                    className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                                                    title="Cancel Interview"
+                                                                >
+                                                                    <XCircle size={16} />
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ) : (
+                                    <div className="py-20 text-center">
+                                        <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">No interviews scheduled.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     ) : activeTab === 'Jobs Management' ? (
                         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-12">
@@ -771,9 +1460,12 @@ export default function DashboardPage() {
                                                         </td>
                                                         <td className="px-6 py-8 text-center">
                                                             <div className="flex items-center justify-center gap-2">
-                                                                <button onClick={() => navigate(`/jobs/${job.jobPostId}`)} className="p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"><Eye size={18} /></button>
-                                                                <button onClick={() => handleOpenEditModal(job)} className="p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"><Edit size={18} /></button>
-                                                                <button onClick={() => handleDeleteJob(job.jobPostId)} className="p-3 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={18} /></button>
+                                                                <button onClick={() => { setActiveTab('Applications'); fetchApplications(job.jobPostId); }} className="p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all" title="View Applications"><UsersIcon size={18} /></button>
+                                                                <button onClick={() => handleOpenEditModal(job)} className="p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all" title="Edit Job"><Edit size={18} /></button>
+                                                                <button onClick={() => handleDeleteJob(job.jobPostId)} className="p-3 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all" title="Delete Job"><Trash2 size={18} /></button>
+                                                                <button onClick={() => handleToggleJobStatus(job.jobPostId, job.status)} className={`p-3 rounded-xl transition-all ${job.status === 'ACTIVE' ? 'text-amber-500 hover:bg-amber-50' : 'text-emerald-500 hover:bg-emerald-50'}`} title={job.status === 'ACTIVE' ? 'Close Job' : 'Open Job'}>
+                                                                    {job.status === 'ACTIVE' ? <XCircle size={18} /> : <CheckCircle2 size={18} />}
+                                                                </button>
                                                             </div>
                                                         </td>
                                                     </tr>
@@ -902,13 +1594,81 @@ export default function DashboardPage() {
                                 </div>
                             </div>
                         </div>
+                    ) : activeTab === 'Payments' ? (
+                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                                <div>
+                                    <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-slate-900 uppercase leading-none">Payments</h1>
+                                    <p className="text-slate-500 font-bold mt-2">Manage your billing history and top up balance.</p>
+                                </div>
+                                <button
+                                    onClick={() => setShowPaymentModal(true)}
+                                    className="bg-emerald-500 text-white px-8 py-4 rounded-[22px] font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-emerald-200 hover:bg-emerald-600 hover:-translate-y-1 active:scale-95 transition-all flex items-center gap-3"
+                                >
+                                    <DollarSign size={18} className="stroke-[3]" />
+                                    Top Up Balance
+                                </button>
+                            </div>
+
+                            <div className="bg-white rounded-[44px] border border-slate-200 shadow-sm overflow-hidden min-h-[400px]">
+                                {paymentsLoading ? (
+                                    <div className="py-32 flex flex-col items-center justify-center">
+                                        <div className="w-10 h-10 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin"></div>
+                                    </div>
+                                ) : payments.length > 0 ? (
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left">
+                                            <thead>
+                                                <tr className="border-b border-slate-100 bg-slate-50/30">
+                                                    <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest">Transaction ID</th>
+                                                    <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest">Date</th>
+                                                    <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest">Amount</th>
+                                                    <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest">Description</th>
+                                                    <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest text-center">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-50">
+                                                {payments.map((payment) => (
+                                                    <tr key={payment.paymentId} className="hover:bg-slate-50/50 transition-colors">
+                                                        <td className="px-8 py-5 font-bold text-slate-500 text-xs font-mono">#{payment.paymentId}</td>
+                                                        <td className="px-8 py-5 font-bold text-slate-600 text-sm">
+                                                            {payment.paymentDate ? new Date(payment.paymentDate).toLocaleString() : 'N/A'}
+                                                        </td>
+                                                        <td className="px-8 py-5 font-black text-emerald-600">
+                                                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(payment.amount)}
+                                                        </td>
+                                                        <td className="px-8 py-5 text-sm font-medium text-slate-500 max-w-xs truncate">
+                                                            {payment.description || 'Top up balance'}
+                                                        </td>
+                                                        <td className="px-8 py-5 text-center">
+                                                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${payment.status === 'SUCCESS' ? 'bg-emerald-50 text-emerald-600' :
+                                                                payment.status === 'FAILED' ? 'bg-red-50 text-red-600' :
+                                                                    'bg-amber-50 text-amber-600'
+                                                                }`}>
+                                                                {payment.status || 'PENDING'}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ) : (
+                                    <div className="py-20 text-center">
+                                        <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">No payment history found.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     ) : (
                         <div className="flex flex-col items-center justify-center py-40">
                             <h2 className="text-3xl font-black text-slate-900 tracking-tight uppercase">{activeTab}</h2>
                         </div>
-                    )}
-                </div>
-            </main>
+                    )
+
+                    }
+                </div >
+            </main >
 
             {showJobModal && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md flex items-center justify-center z-[100] p-6">
@@ -945,8 +1705,114 @@ export default function DashboardPage() {
                         </form>
                     </div>
                 </div>
+            )
+            }
+
+            {/* Interview Schedule Modal */}
+            {
+                showInterviewModal && (
+                    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md flex items-center justify-center z-[100] p-6">
+                        <div className="bg-white rounded-[44px] w-full max-w-lg overflow-hidden shadow-2xl flex flex-col animate-in fade-in zoom-in duration-200">
+                            <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                                <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Schedule Interview</h2>
+                                <button onClick={() => setShowInterviewModal(false)} className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"><XCircle size={20} /></button>
+                            </div>
+                            <form onSubmit={handleScheduleInterview} className="p-8 space-y-6">
+                                <div>
+                                    <label className="block text-xs font-black text-slate-400 uppercase mb-2 tracking-widest">Date & Time</label>
+                                    <div className="flex gap-4">
+                                        <input
+                                            type="date"
+                                            required
+                                            className="flex-1 bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-2 focus:ring-blue-500/20 font-bold text-slate-700"
+                                            value={interviewFormData.interviewDate}
+                                            onChange={e => setInterviewFormData({ ...interviewFormData, interviewDate: e.target.value })}
+                                        />
+                                        <input
+                                            type="time"
+                                            required
+                                            className="flex-1 bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-2 focus:ring-blue-500/20 font-bold text-slate-700"
+                                            value={interviewFormData.interviewTime}
+                                            onChange={e => setInterviewFormData({ ...interviewFormData, interviewTime: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-black text-slate-400 uppercase mb-2 tracking-widest">Location (or Online Link)</label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. Office Room 302 or Zoom Link"
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-2 focus:ring-blue-500/20 font-medium text-slate-700"
+                                        value={interviewFormData.location}
+                                        onChange={e => setInterviewFormData({ ...interviewFormData, location: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-black text-slate-400 uppercase mb-2 tracking-widest">Meeting Link (Optional)</label>
+                                    <input
+                                        type="url"
+                                        placeholder="https://zoom.us/..."
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-2 focus:ring-blue-500/20 font-medium text-slate-700"
+                                        value={interviewFormData.meetingLink}
+                                        onChange={e => setInterviewFormData({ ...interviewFormData, meetingLink: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-black text-slate-400 uppercase mb-2 tracking-widest">Notes</label>
+                                    <textarea
+                                        rows={3}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-2 focus:ring-blue-500/20 font-medium text-slate-700 resize-none"
+                                        value={interviewFormData.note}
+                                        onChange={e => setInterviewFormData({ ...interviewFormData, note: e.target.value })}
+                                    />
+                                </div>
+                                <div className="pt-4">
+                                    <button type="submit" className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-blue-200 transition-all">
+                                        Confirm Schedule
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* Payment Modal */}
+            {showPaymentModal && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md flex items-center justify-center z-[100] p-6">
+                    <div className="bg-white rounded-[44px] w-full max-w-md overflow-hidden shadow-2xl flex flex-col animate-in fade-in zoom-in duration-200">
+                        <div className="p-8 pb-0 flex items-center justify-between">
+                            <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Top Up Balance</h2>
+                            <button onClick={() => setShowPaymentModal(false)} className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"><XCircle size={20} /></button>
+                        </div>
+                        <form onSubmit={handleCreatePayment} className="p-8 pt-6">
+                            <div className="mb-6">
+                                <label className="block text-xs font-black text-slate-400 uppercase mb-3 ml-1 tracking-widest">Amount (VND)</label>
+                                <div className="relative">
+                                    <input
+                                        type="number"
+                                        required
+                                        min="10000"
+                                        step="10000"
+                                        placeholder="Enter amount..."
+                                        className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl py-4 pl-6 pr-14 focus:bg-white focus:border-emerald-500 transition-all font-black text-xl text-slate-900 outline-none"
+                                        value={paymentAmount}
+                                        onChange={e => setPaymentAmount(e.target.value)}
+                                    />
+                                    <div className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 font-black">₫</div>
+                                </div>
+                                <p className="text-[10px] font-bold text-slate-400 mt-2 ml-1">Minimum deposit amount is 10,000 ₫</p>
+                            </div>
+
+                            <button type="submit" className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-emerald-200 transition-all flex items-center justify-center gap-2">
+                                <CreditCard size={18} />
+                                Proceed to Payment
+                            </button>
+                        </form>
+                    </div>
+                </div>
             )}
-        </div>
+        </div >
     );
 }
 

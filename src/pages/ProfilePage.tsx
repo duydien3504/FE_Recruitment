@@ -73,6 +73,10 @@ export default function ProfilePage() {
     const [companyRegError, setCompanyRegError] = useState('');
     const [hasCompany, setHasCompany] = useState(false);
 
+    // Candidate Interviews State
+    const [interviews, setInterviews] = useState<any[]>([]);
+    const [interviewsLoading, setInterviewsLoading] = useState(false);
+
     useEffect(() => {
         const checkCompany = async () => {
             try {
@@ -86,7 +90,24 @@ export default function ProfilePage() {
             }
         };
         checkCompany();
+        fetchCandidateInterviews();
     }, []);
+
+    const fetchCandidateInterviews = async () => {
+        setInterviewsLoading(true);
+        try {
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+            const response = await fetchWithAuth(`${apiUrl}/api/v1/candidate/interviews`);
+            if (response.ok) {
+                const json = await response.json();
+                setInterviews(json.data || []);
+            }
+        } catch (error) {
+            console.error("Error fetching interviews:", error);
+        } finally {
+            setInterviewsLoading(false);
+        }
+    };
 
     const fetchAllData = async () => {
         setLoading(true);
@@ -539,6 +560,61 @@ export default function ProfilePage() {
                                         <textarea disabled={!isEditing} value={isEditing ? editData.bio : profile.bio || 'Chưa cập nhật'} onChange={(e) => setEditData({ ...editData, bio: e.target.value })} rows={4} className={`w-full px-4 py-3 rounded-lg border resize-none ${isEditing ? 'bg-white' : 'bg-gray-50 font-semibold'}`} />
                                     </div>
                                 </div>
+                            </div>
+
+                            <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 mb-8">
+                                <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                                    <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                    </div>
+                                    Lịch phỏng vấn của bạn
+                                </h2>
+
+                                {interviewsLoading ? (
+                                    <div className="text-center py-8">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                                    </div>
+                                ) : interviews.length > 0 ? (
+                                    <div className="space-y-4">
+                                        {interviews.map((interview: any) => (
+                                            <div key={interview.interviewId} className="flex flex-col md:flex-row md:items-center justify-between p-4 border border-gray-100 rounded-xl hover:bg-gray-50 transition-colors gap-4">
+                                                <div>
+                                                    <h3 className="font-bold text-gray-800">{interview.title || 'Phỏng vấn'}</h3>
+                                                    <p className="text-sm text-gray-500 mt-1">
+                                                        {new Date(interview.startTime).toLocaleDateString('vi-VN')} - {new Date(interview.startTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                                                    </p>
+                                                    <div className="flex flex-wrap gap-2 mt-2">
+                                                        {interview.meetingLink ? (
+                                                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded font-medium">Online Meeting</span>
+                                                        ) : (
+                                                            <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded font-medium">{interview.location || 'Tại văn phòng'}</span>
+                                                        )}
+                                                        <span className={`text-xs px-2 py-1 rounded font-medium ${interview.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
+                                                            interview.status === 'CANCELLED' ? 'bg-red-100 text-red-700' :
+                                                                'bg-yellow-100 text-yellow-700'
+                                                            }`}>
+                                                            {interview.status || 'SCHEDULED'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                {interview.meetingLink && (
+                                                    <a
+                                                        href={interview.meetingLink}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition-colors text-center shadow-sm shadow-blue-200"
+                                                    >
+                                                        Tham gia ngay
+                                                    </a>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-8 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                                        <p className="text-gray-500">Bạn chưa có lịch phỏng vấn nào sắp tới.</p>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Skills Section */}

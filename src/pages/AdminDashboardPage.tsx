@@ -12,7 +12,6 @@ import {
     Search,
     Bell,
     TrendingUp,
-    Plus,
     FileText,
     MoreHorizontal,
     MessageSquare,
@@ -121,6 +120,7 @@ interface Company {
 export default function AdminDashboardPage() {
     const [activeTab, setActiveTab] = useState('Overview');
     const [stats, setStats] = useState<DashboardStats | null>(null);
+    const [analyticsData, setAnalyticsData] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -137,6 +137,22 @@ export default function AdminDashboardPage() {
     const [selectedUser, setSelectedUser] = useState<UserDetail | null>(null);
     const [showUserModal, setShowUserModal] = useState(false);
     const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
+    const [jobs, setJobs] = useState<any[]>([]);
+    const [jobsLoading, setJobsLoading] = useState(false);
+    const [jobFilters, setJobFilters] = useState({
+        status: '',
+        keyword: ''
+    });
+
+    // Metadata Management State (Categories, Locations, Skills)
+    const [categories, setCategories] = useState<any[]>([]);
+    const [locations, setLocations] = useState<any[]>([]);
+    const [skills, setSkills] = useState<any[]>([]);
+    const [metadataLoading, setMetadataLoading] = useState(false);
+    const [newItemName, setNewItemName] = useState('');
+    const [editingItem, setEditingItem] = useState<any | null>(null);
+    const [isMetadataModalOpen, setIsMetadataModalOpen] = useState(false);
+    const [metadataType, setMetadataType] = useState<'Category' | 'Location' | 'Skill'>('Category');
 
     // Notifications State
     const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -208,9 +224,10 @@ export default function AdminDashboardPage() {
         setLoading(true);
         try {
             const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-            const [statsRes, profileRes] = await Promise.all([
+            const [statsRes, profileRes, growthRes] = await Promise.all([
                 fetchWithAuth(`${apiUrl}/api/v1/admin/stats/dashboard`),
-                fetchWithAuth(`${apiUrl}/api/v1/users/profile`)
+                fetchWithAuth(`${apiUrl}/api/v1/users/profile`),
+                fetchWithAuth(`${apiUrl}/api/v1/admin/stats/growth`)
             ]);
 
             if (statsRes.ok) {
@@ -220,6 +237,10 @@ export default function AdminDashboardPage() {
             if (profileRes.ok) {
                 const json = await profileRes.json();
                 setCurrentUser(json.data);
+            }
+            if (growthRes.ok) {
+                const json = await growthRes.json();
+                setAnalyticsData(json.data || []);
             }
         } catch (err) {
             console.error('Error fetching dashboard data:', err);
@@ -274,6 +295,232 @@ export default function AdminDashboardPage() {
             console.error('Error fetching users:', err);
         } finally {
             setUsersLoading(false);
+        }
+    };
+
+    // Metadata Fetch Functions
+    const fetchCategories = async () => {
+        setMetadataLoading(true);
+        try {
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+            const response = await fetch(`${apiUrl}/api/v1/categories`);
+            if (response.ok) {
+                const json = await response.json();
+                setCategories(json.data || []);
+            }
+        } catch (err) {
+            console.error('Error fetching categories:', err);
+        } finally {
+            setMetadataLoading(false);
+        }
+    };
+
+    const fetchLocations = async () => {
+        setMetadataLoading(true);
+        try {
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+            const response = await fetch(`${apiUrl}/api/v1/locations`);
+            if (response.ok) {
+                const json = await response.json();
+                setLocations(json.data || []);
+            }
+        } catch (err) {
+            console.error('Error fetching locations:', err);
+        } finally {
+            setMetadataLoading(false);
+        }
+    };
+
+    const fetchSkills = async () => {
+        setMetadataLoading(true);
+        try {
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+            const response = await fetchWithAuth(`${apiUrl}/api/v1/skills`);
+            if (response.ok) {
+                const json = await response.json();
+                setSkills(json.data || []);
+            }
+        } catch (err) {
+            console.error('Error fetching skills:', err);
+        } finally {
+            setMetadataLoading(false);
+        }
+    };
+
+    // Metadata CRUD Functions
+    const handleCreateMetadata = async () => {
+        if (!newItemName.trim()) {
+            toast.error('Name cannot be empty');
+            return;
+        }
+        try {
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+            let endpoint = '';
+            if (metadataType === 'Category') endpoint = '/api/v1/admin/categories';
+            else if (metadataType === 'Location') endpoint = '/api/v1/admin/locations';
+            else if (metadataType === 'Skill') endpoint = '/api/v1/admin/skills';
+
+            const response = await fetchWithAuth(`${apiUrl}${endpoint}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: newItemName })
+            });
+
+            if (response.ok) {
+                toast.success(`${metadataType} created successfully`);
+                setNewItemName('');
+                setIsMetadataModalOpen(false);
+                if (metadataType === 'Category') fetchCategories();
+                else if (metadataType === 'Location') fetchLocations();
+                else if (metadataType === 'Skill') fetchSkills();
+            } else {
+                toast.error(`Failed to create ${metadataType}`);
+            }
+        } catch (error) {
+            console.error('Error creating metadata:', error);
+            toast.error('An error occurred');
+        }
+    };
+
+    const handleUpdateMetadata = async () => {
+        if (!editingItem || !newItemName.trim()) return;
+        try {
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+            let endpoint = '';
+            let id = '';
+
+            if (metadataType === 'Category') {
+                endpoint = '/api/v1/admin/categories';
+                id = editingItem.categoryId;
+            } else if (metadataType === 'Location') {
+                endpoint = '/api/v1/admin/locations';
+                id = editingItem.locationId;
+            } else if (metadataType === 'Skill') {
+                endpoint = '/api/v1/admin/skills';
+                id = editingItem.skillId;
+            }
+
+            const response = await fetchWithAuth(`${apiUrl}${endpoint}/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: newItemName })
+            });
+
+            if (response.ok) {
+                toast.success(`${metadataType} updated successfully`);
+                setNewItemName('');
+                setEditingItem(null);
+                setIsMetadataModalOpen(false);
+                if (metadataType === 'Category') fetchCategories();
+                else if (metadataType === 'Location') fetchLocations();
+                else if (metadataType === 'Skill') fetchSkills();
+            } else {
+                toast.error(`Failed to update ${metadataType}`);
+            }
+        } catch (error) {
+            console.error('Error updating metadata:', error);
+            toast.error('An error occurred');
+        }
+    };
+
+    const handleDeleteMetadata = async (item: any) => {
+        if (!window.confirm('Are you sure you want to delete this item?')) return;
+        try {
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+            let endpoint = '';
+            let id = '';
+
+            if (metadataType === 'Category') {
+                endpoint = '/api/v1/admin/categories';
+                id = item.categoryId;
+            } else if (metadataType === 'Location') {
+                endpoint = '/api/v1/admin/locations';
+                id = item.locationId;
+            } else if (metadataType === 'Skill') {
+                endpoint = '/api/v1/admin/skills';
+                id = item.skillId;
+            }
+
+            const response = await fetchWithAuth(`${apiUrl}${endpoint}/${id}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                toast.success(`${metadataType} deleted successfully`);
+                if (metadataType === 'Category') fetchCategories();
+                else if (metadataType === 'Location') fetchLocations();
+                else if (metadataType === 'Skill') fetchSkills();
+            } else {
+                toast.error(`Failed to delete ${metadataType}`);
+            }
+        } catch (error) {
+            console.error('Error deleting metadata:', error);
+            toast.error('An error occurred');
+        }
+    };
+
+    const openMetadataModal = (type: 'Category' | 'Location' | 'Skill', item?: any) => {
+        setMetadataType(type);
+        setEditingItem(item || null);
+        setNewItemName(item ? item.name : '');
+        setIsMetadataModalOpen(true);
+    };
+
+    const fetchJobsAdmin = async () => {
+        setJobsLoading(true);
+        try {
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+            const queryParams = new URLSearchParams();
+            if (jobFilters.status) queryParams.append('status', jobFilters.status);
+            if (jobFilters.keyword) queryParams.append('keyword', jobFilters.keyword);
+
+            const response = await fetchWithAuth(`${apiUrl}/api/v1/admin/jobs?${queryParams.toString()}`);
+            if (response.ok) {
+                const json = await response.json();
+                setJobs(json.data || []);
+            }
+        } catch (err) {
+            console.error('Error fetching admin jobs:', err);
+        } finally {
+            setJobsLoading(false);
+        }
+    };
+
+    const handleApproveJob = async (jobId: string) => {
+        try {
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+            const response = await fetchWithAuth(`${apiUrl}/api/v1/admin/jobs/${jobId}/approve`, {
+                method: 'PATCH'
+            });
+            if (response.ok) {
+                toast.success('Duyệt tin tuyển dụng thành công!');
+                fetchJobsAdmin();
+            } else {
+                toast.error('Duyệt tin thất bại.');
+            }
+        } catch (err) {
+            console.error('Error approving job:', err);
+        }
+    };
+
+    const handleRejectJob = async (jobId: string) => {
+        const reason = window.prompt('Nhập lý do từ chối:');
+        if (reason === null) return;
+
+        try {
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+            const response = await fetchWithAuth(`${apiUrl}/api/v1/admin/jobs/${jobId}/reject`, {
+                method: 'PATCH',
+                body: JSON.stringify({ reason })
+            });
+            if (response.ok) {
+                toast.success('Đã từ chối tin tuyển dụng.');
+                fetchJobsAdmin();
+            } else {
+                toast.error('Từ chối tin thất bại.');
+            }
+        } catch (err) {
+            console.error('Error rejecting job:', err);
         }
     };
 
@@ -605,8 +852,19 @@ export default function AdminDashboardPage() {
             fetchConversations();
         } else if (activeTab === 'Employer Management') {
             fetchCompanies();
+        } else if (activeTab === 'Jobs Management') {
+            fetchJobsAdmin();
+        } else if (activeTab === 'Categories') {
+            fetchCategories();
+            setMetadataType('Category');
+        } else if (activeTab === 'Locations') {
+            fetchLocations();
+            setMetadataType('Location');
+        } else if (activeTab === 'Skills') {
+            fetchSkills();
+            setMetadataType('Skill');
         }
-    }, [activeTab, userFilters, companiesPage, companiesKeyword, companiesStatus]);
+    }, [activeTab, userFilters, companiesPage, companiesKeyword, companiesStatus, jobFilters]);
 
     const sidebarItems = [
         { name: 'Overview', icon: LayoutDashboard },
@@ -614,18 +872,21 @@ export default function AdminDashboardPage() {
         { name: 'Employer Management', icon: Building2 },
         { name: 'Message', icon: MessageSquare },
         { name: 'Jobs Management', icon: Briefcase },
+        { name: 'Categories', icon: LayoutDashboard },
+        { name: 'Locations', icon: Building2 },
+        { name: 'Skills', icon: TrendingUp },
         { name: 'Analytics', icon: BarChart3 },
         { name: 'System Settings', icon: Settings },
     ];
 
-    const chartData = [
-        { name: 'Mon', users: 4, jobs: 10 },
-        { name: 'Tue', users: 7, jobs: 15 },
-        { name: 'Wed', users: 5, jobs: 8 },
-        { name: 'Thu', users: 12, jobs: 25 },
-        { name: 'Fri', users: 8, jobs: 20 },
-        { name: 'Sat', users: 15, jobs: 35 },
-        { name: 'Sun', users: stats?.new_users || 20, jobs: stats?.new_jobs || 45 },
+    const chartData = analyticsData.length > 0 ? analyticsData : [
+        { name: 'Mon', users: 0, jobs: 0 },
+        { name: 'Tue', users: 0, jobs: 0 },
+        { name: 'Wed', users: 0, jobs: 0 },
+        { name: 'Thu', users: 0, jobs: 0 },
+        { name: 'Fri', users: 0, jobs: 0 },
+        { name: 'Sat', users: 0, jobs: 0 },
+        { name: 'Sun', users: 0, jobs: 0 },
     ];
 
     return (
@@ -1492,6 +1753,239 @@ export default function AdminDashboardPage() {
                                     >
                                         Next
                                     </button>
+                                </div>
+                            )}
+                        </div>
+                    ) : activeTab === 'Jobs Management' ? (
+                        <div className="space-y-8 animate-in fade-in duration-500">
+                            <div>
+                                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-slate-900 uppercase leading-none">Jobs Management</h1>
+                                <p className="text-slate-400 text-sm sm:text-base lg:text-lg font-medium mt-1 sm:mt-3">Review and manage job postings from employers.</p>
+                            </div>
+
+                            {/* Filters */}
+                            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-wrap gap-4 items-end">
+                                <div className="flex-1 min-w-[200px]">
+                                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Search Jobs</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Job title, company..."
+                                        value={jobFilters.keyword}
+                                        onChange={(e) => setJobFilters({ ...jobFilters, keyword: e.target.value })}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-sm"
+                                    />
+                                </div>
+                                <div className="flex-1 min-w-[140px]">
+                                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Status</label>
+                                    <select
+                                        value={jobFilters.status}
+                                        onChange={(e) => setJobFilters({ ...jobFilters, status: e.target.value })}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-sm appearance-none"
+                                    >
+                                        <option value="">All Status</option>
+                                        <option value="Pending">Pending</option>
+                                        <option value="Approved">Approved</option>
+                                        <option value="Rejected">Rejected</option>
+                                        <option value="Expired">Expired</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* Jobs Table */}
+                            <div className="bg-white rounded-[32px] border border-slate-200 shadow-sm overflow-hidden min-h-[400px]">
+                                {jobsLoading ? (
+                                    <div className="py-20 flex flex-col items-center justify-center">
+                                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+                                        <p className="mt-4 text-slate-400 font-bold uppercase tracking-widest text-xs">Loading jobs...</p>
+                                    </div>
+                                ) : (
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left">
+                                            <thead>
+                                                <tr className="border-b border-slate-100">
+                                                    <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest">Job Information</th>
+                                                    <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest">Company</th>
+                                                    <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest">Status</th>
+                                                    <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest">Closing Date</th>
+                                                    <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest text-center">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-50">
+                                                {jobs.map((job) => (
+                                                    <tr key={job.jobPostId} className="hover:bg-slate-50/50 transition-colors group">
+                                                        <td className="px-8 py-5">
+                                                            <div className="flex flex-col">
+                                                                <span className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate">{job.title}</span>
+                                                                <span className="text-xs text-slate-400 font-medium truncate">{job.location?.name} • {job.jobType}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-8 py-5 text-sm font-bold text-slate-600">{job.company?.name}</td>
+                                                        <td className="px-8 py-5">
+                                                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${job.status === 'Approved' ? 'bg-emerald-50 text-emerald-600' :
+                                                                job.status === 'Pending' ? 'bg-amber-50 text-amber-600' :
+                                                                    'bg-red-50 text-red-600'
+                                                                }`}>
+                                                                {job.status}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-8 py-5 text-sm font-bold text-slate-500 tracking-tight">
+                                                            {new Date(job.closingDate).toLocaleDateString('vi-VN')}
+                                                        </td>
+                                                        <td className="px-8 py-5 text-center">
+                                                            <div className="flex items-center justify-center gap-2">
+                                                                {job.status === 'Pending' && (
+                                                                    <>
+                                                                        <button
+                                                                            onClick={() => handleApproveJob(job.jobPostId)}
+                                                                            className="px-3 py-1.5 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-emerald-700 transition-all"
+                                                                        >
+                                                                            Approve
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => handleRejectJob(job.jobPostId)}
+                                                                            className="px-3 py-1.5 bg-red-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-red-700 transition-all"
+                                                                        >
+                                                                            Reject
+                                                                        </button>
+                                                                    </>
+                                                                )}
+                                                                <button
+                                                                    onClick={() => window.open(`/jobs/${job.jobPostId}`, '_blank')}
+                                                                    className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                                                                >
+                                                                    <LayoutDashboard size={18} />
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                        {jobs.length === 0 && (
+                                            <div className="py-20 text-center">
+                                                <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">No jobs found matching your filters.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    ) : ['Categories', 'Locations', 'Skills'].includes(activeTab) ? (
+                        <div className="space-y-8 animate-in fade-in duration-500">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-slate-900 uppercase leading-none">{activeTab}</h1>
+                                    <p className="text-slate-400 text-sm sm:text-base lg:text-lg font-medium mt-1 sm:mt-3">Manage system {activeTab.toLowerCase()}.</p>
+                                </div>
+                                <button
+                                    onClick={() => openMetadataModal(activeTab.slice(0, -1) as any)}
+                                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-200 transition-all flex items-center gap-2"
+                                >
+                                    <TrendingUp size={18} />
+                                    <span>Add New {activeTab.slice(0, -1)}</span>
+                                </button>
+                            </div>
+
+                            {/* Metadata Table */}
+                            <div className="bg-white rounded-[32px] border border-slate-200 shadow-sm overflow-hidden min-h-[400px]">
+                                {metadataLoading ? (
+                                    <div className="py-20 flex flex-col items-center justify-center">
+                                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+                                        <p className="mt-4 text-slate-400 font-bold uppercase tracking-widest text-xs">Loading {activeTab.toLowerCase()}...</p>
+                                    </div>
+                                ) : (
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left">
+                                            <thead>
+                                                <tr className="border-b border-slate-100">
+                                                    <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest">ID</th>
+                                                    <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest">Name</th>
+                                                    <th className="px-8 py-6 text-xs font-black text-slate-400 uppercase tracking-widest text-center">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-50">
+                                                {(activeTab === 'Categories' ? categories : activeTab === 'Locations' ? locations : skills).map((item) => (
+                                                    <tr key={item.categoryId || item.locationId || item.skillId} className="hover:bg-slate-50/50 transition-colors group">
+                                                        <td className="px-8 py-5 text-sm font-bold text-slate-500">
+                                                            #{item.categoryId || item.locationId || item.skillId}
+                                                        </td>
+                                                        <td className="px-8 py-5">
+                                                            <span className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{item.name}</span>
+                                                        </td>
+                                                        <td className="px-8 py-5 text-center">
+                                                            <div className="flex items-center justify-center gap-2">
+                                                                <button
+                                                                    onClick={() => openMetadataModal(activeTab.slice(0, -1) as any, item)}
+                                                                    className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                                                                >
+                                                                    <Settings size={18} />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleDeleteMetadata(item)}
+                                                                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                                                >
+                                                                    <LogOut size={18} />
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                        {(activeTab === 'Categories' ? categories : activeTab === 'Locations' ? locations : skills).length === 0 && (
+                                            <div className="py-20 text-center">
+                                                <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">No {activeTab.toLowerCase()} found.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Metadata Modal */}
+                            {isMetadataModalOpen && (
+                                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+                                        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                                            <h3 className="text-xl font-black tracking-tight text-slate-900">
+                                                {editingItem ? `Edit ${metadataType}` : `Add New ${metadataType}`}
+                                            </h3>
+                                            <button
+                                                onClick={() => setIsMetadataModalOpen(false)}
+                                                className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+                                            >
+                                                <X size={20} />
+                                            </button>
+                                        </div>
+
+                                        <div className="p-6 space-y-4">
+                                            <div>
+                                                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Name</label>
+                                                <input
+                                                    type="text"
+                                                    value={newItemName}
+                                                    onChange={(e) => setNewItemName(e.target.value)}
+                                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all font-medium text-slate-900"
+                                                    placeholder={`Enter ${metadataType.toLowerCase()} name...`}
+                                                    autoFocus
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex items-center justify-end gap-3">
+                                            <button
+                                                onClick={() => setIsMetadataModalOpen(false)}
+                                                className="px-5 py-2.5 font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-all"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                onClick={editingItem ? handleUpdateMetadata : handleCreateMetadata}
+                                                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-200 transition-all"
+                                            >
+                                                {editingItem ? 'Save Changes' : 'Create Item'}
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
                         </div>
