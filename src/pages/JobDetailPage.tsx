@@ -1,11 +1,13 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { useParams, Link } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { toast } from 'sonner';
 import { fetchWithAuth, getAccessToken } from '../utils/auth';
-import { X, FileText, CheckCircle2, ChevronRight, Loader2 } from 'lucide-react';
+import { X, FileText, CheckCircle2, ChevronRight, Loader2, MessageCircle, Send } from 'lucide-react';
+import '../styles/chat.css';
 
 interface Resume {
     id: string;
@@ -60,6 +62,25 @@ export default function JobDetailPage() {
     const [hasApplied, setHasApplied] = useState(false);
 
     const [saving, setSaving] = useState(false);
+    // ── Chat state ───────────────────────────────────────────
+    const [showChat, setShowChat] = useState(false);
+    const [chatLoading, setChatLoading] = useState(false);
+    const [chatMessages, setChatMessages] = useState<any[]>([]);
+    const [chatInput, setChatInput] = useState('');
+    const [chatSending, setChatSending] = useState(false);
+    const [activeConvId, setActiveConvId] = useState<number | null>(null);
+    const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+    // Tính năng mobile detection bằng JS
+    const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 500);
+    const chatEndRef = useRef<HTMLDivElement>(null);
+    const chatPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth <= 500);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     const checkIsSaved = async () => {
         const token = getAccessToken();
@@ -156,6 +177,125 @@ export default function JobDetailPage() {
         checkApplicationStatus();
         fetchJobDetail();
     }, [id]);
+
+    // ── Chat helpers ─────────────────────────────────────────
+    /**
+     * Mở / bắt đầu cuộc trò chuyện với nhà tuyển dụng.
+     * API POST /api/v1/conversations sẽ trả về conversationId (hoặc tìm conv đã tồn tại).
+     */
+    const handleOpenChat = async () => {
+        const token = getAccessToken();
+        if (!token) {
+            toast.error('Vui lòng đăng nhập để nhắn tin');
+            return;
+        }
+        if (!job) return;
+        setShowChat(true);
+        // Lấy userId nếu chưa có
+        if (!currentUserId) {
+            try {
+                const profileRes = await fetchWithAuth(`${apiUrl}/api/v1/users/profile`);
+                if (profileRes.ok) {
+                    const profileJson = await profileRes.json();
+                    setCurrentUserId(profileJson.data?.userId || null);
+                }
+            } catch (err) {
+                console.error('Error fetching user profile:', err);
+            }
+        }
+        // Nếu đã có conv rồi thì chỉ mở lại
+        if (activeConvId) {
+            fetchChatMessages(activeConvId);
+            return;
+        }
+        setChatLoading(true);
+        try {
+            const body: Record<string, string> = {
+                companyId: job.company.companyId
+            };
+            const res = await fetchWithAuth(`${apiUrl}/api/v1/conversations`, {
+                method: 'POST',
+                body: JSON.stringify(body)
+            });
+            if (res.ok) {
+                const json = await res.json();
+                const convId = json.data?.conversationsId || json.data?.conversationId || json.conversationsId;
+                if (convId) {
+                    setActiveConvId(convId);
+                    await fetchChatMessages(convId);
+                }
+            } else {
+                // Nếu conv đã tồn tại, thử lấy danh sách conversations để tìm
+                const listRes = await fetchWithAuth(`${apiUrl}/api/v1/conversations`);
+                if (listRes.ok) {
+                    const listJson = await listRes.json();
+                    const existing = (listJson.data || []).find(
+                        (c: any) => c.company && String(c.company.companyId) === String(job.company.companyId)
+                    );
+                    if (existing) {
+                        setActiveConvId(existing.conversationsId);
+                        await fetchChatMessages(existing.conversationsId);
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('Error opening chat:', err);
+            toast.error('Không thể mở cuộc trò chuyện');
+        } finally {
+            setChatLoading(false);
+        }
+    };
+
+    const fetchChatMessages = async (convId: number) => {
+        try {
+            const res = await fetchWithAuth(`${apiUrl}/api/v1/conversations/${convId}/messages`);
+            if (res.ok) {
+                const json = await res.json();
+                const list = Array.isArray(json) ? json : (json.data || json.content || []);
+                setChatMessages(list);
+            }
+        } catch (err) {
+            console.error('Error fetching chat messages:', err);
+        }
+    };
+
+    const handleSendChatMessage = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!chatInput.trim() || !activeConvId || chatSending) return;
+        const content = chatInput.trim();
+        setChatInput('');
+        setChatSending(true);
+        try {
+            const res = await fetchWithAuth(`${apiUrl}/api/v1/messages`, {
+                method: 'POST',
+                body: JSON.stringify({ conversationId: activeConvId, content })
+            });
+            if (res.ok) {
+                await fetchChatMessages(activeConvId);
+            } else {
+                toast.error('Gửi tin nhắn thất bại');
+            }
+        } catch (err) {
+            console.error('Error sending message:', err);
+        } finally {
+            setChatSending(false);
+        }
+    };
+
+    // Polling mỗi 5s khi chat đang mở
+    useEffect(() => {
+        if (showChat && activeConvId) {
+            chatPollRef.current = setInterval(() => fetchChatMessages(activeConvId), 5000);
+        }
+        return () => {
+            if (chatPollRef.current) clearInterval(chatPollRef.current);
+        };
+    }, [showChat, activeConvId]);
+
+    // Scroll xuống cuối khi có tin mới
+    useEffect(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [chatMessages]);
 
     const checkApplicationStatus = async () => {
         const token = getAccessToken();
@@ -367,6 +507,15 @@ export default function JobDetailPage() {
                                         "Ứng tuyển ngay"
                                     )}
                                 </button>
+                                {/* ── Nút Nhắn tin ── */}
+                                <button
+                                    id="job-chat-btn"
+                                    onClick={handleOpenChat}
+                                    className="chat-btn flex-1 sm:flex-none justify-center"
+                                >
+                                    <MessageCircle size={18} />
+                                    Nhắn tin
+                                </button>
                                 <button
                                     onClick={handleToggleSave}
                                     disabled={saving}
@@ -495,6 +644,121 @@ export default function JobDetailPage() {
             </main>
 
             <Footer />
+
+            {/* ── Chat Popup — render qua Portal lên document.body ──
+                Lý do: Header có backdrop-blur-sm tạo stacking context riêng,
+                nếu chat nằm trong cùng parent thì z-index: 9999 bị trap.
+                Portal đưa chat ra ngoài mọi stacking context → luôn ở trên cùng.
+            */}
+            {showChat && job && ReactDOM.createPortal(
+                <div
+                    className={`chat-overlay ${isMobile ? 'is-mobile' : ''}`}
+                    id="job-chat-overlay"
+                    onClick={(e) => {
+                        // Đóng chat khi click backdrop (chỉ trên mobile)
+                        if (e.target === e.currentTarget && isMobile) setShowChat(false);
+                    }}
+                >
+                    <div className="chat-box" id="job-chat-box">
+                        {/* Header */}
+                        <div className="chat-header">
+                            <div className="chat-header-row">
+                                {job.company?.logoUrl ? (
+                                    <img
+                                        src={job.company.logoUrl}
+                                        alt={job.company.name}
+                                        className="chat-header-avatar"
+                                    />
+                                ) : (
+                                    <div className="chat-header-avatar-fallback">
+                                        {job.company?.name?.charAt(0) || 'C'}
+                                    </div>
+                                )}
+                                <div className="chat-header-info">
+                                    <div className="chat-header-name">{job.company?.name}</div>
+                                    <div className="chat-header-sub">Nhà tuyển dụng · {job.title}</div>
+                                </div>
+                                <button
+                                    id="job-chat-close-btn"
+                                    className="chat-close-btn"
+                                    onClick={() => setShowChat(false)}
+                                    aria-label="Đóng chat"
+                                >
+                                    <X size={16} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Body */}
+                        {chatLoading ? (
+                            <div className="chat-loading">
+                                <div className="chat-spinner" />
+                            </div>
+                        ) : !getAccessToken() ? (
+                            <div className="chat-login-prompt">
+                                <p>Bạn cần đăng nhập để nhắn tin với nhà tuyển dụng.</p>
+                                <Link to="/login">Đăng nhập ngay</Link>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="chat-messages">
+                                    {chatMessages.length === 0 ? (
+                                        <div className="chat-messages-empty">
+                                            <MessageCircle size={40} />
+                                            <p>Bắt đầu cuộc trò chuyện</p>
+                                            <span>Gửi tin nhắn đến {job.company?.name}</span>
+                                        </div>
+                                    ) : (
+                                        chatMessages.map((msg: any, idx: number) => {
+                                            const isMe = currentUserId
+                                                ? String(msg.senderId) === String(currentUserId)
+                                                : false;
+                                            const time = msg.createdAt
+                                                ? new Date(msg.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+                                                : '';
+                                            return (
+                                                <div key={msg.messageId || idx} className={`chat-msg-row ${isMe ? 'me' : 'them'}`}>
+                                                    <div className="chat-bubble">
+                                                        {msg.content}
+                                                        {time && <span className="chat-bubble-time">{time}</span>}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })
+                                    )}
+                                    <div ref={chatEndRef} />
+                                </div>
+
+                                {/* Input */}
+                                <form className="chat-input-area" onSubmit={handleSendChatMessage}>
+                                    <input
+                                        id="job-chat-input"
+                                        className="chat-input"
+                                        type="text"
+                                        placeholder="Nhập tin nhắn..."
+                                        value={chatInput}
+                                        onChange={e => setChatInput(e.target.value)}
+                                        disabled={chatSending}
+                                        autoComplete="off"
+                                    />
+                                    <button
+                                        id="job-chat-send-btn"
+                                        type="submit"
+                                        className="chat-send-btn"
+                                        disabled={!chatInput.trim() || chatSending}
+                                        aria-label="Gửi tin nhắn"
+                                    >
+                                        {chatSending
+                                            ? <Loader2 size={16} className="animate-spin" />
+                                            : <Send size={16} />}
+                                    </button>
+                                </form>
+                            </>
+                        )}
+                    </div>
+                </div>,
+                document.body
+            )}
 
             {/* Application Modal */}
             {showApplyModal && (
