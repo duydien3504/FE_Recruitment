@@ -6,6 +6,11 @@ const LeftSidebar: React.FC = () => {
   const { themeConfig, updateTheme, cvData, setCvData, updateSection } = useCvStore();
   const [activeTab, setActiveTab] = useState('design');
   const [isSyncing, setIsSyncing] = useState(false);
+  const [selectedFontSize, setSelectedFontSize] = useState('14');
+
+  const dispatchFormat = (type: string, value?: any) => {
+    window.dispatchEvent(new CustomEvent('tiptap-format', { detail: { type, value } }));
+  };
 
   const tabs = [
     { id: 'design', label: 'Thiết kế & Font', icon: (
@@ -99,39 +104,9 @@ const LeftSidebar: React.FC = () => {
               </select>
             </div>
 
-            {/* Font Size */}
-            <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Kích cỡ chữ</label>
-              <div className="flex items-center justify-between px-2">
-                 <span className="text-xs text-gray-400">Nhỏ</span>
-                 <span className="text-xs text-gray-400">Vừa</span>
-                 <span className="text-xs text-gray-400">Lớn</span>
-              </div>
-              <input 
-                type="range" min="0" max="3" step="1"
-                value={['small', 'medium', 'large', 'extra-large'].indexOf(themeConfig.fontSize)}
-                onChange={(e) => {
-                  const sizes = ['small', 'medium', 'large', 'extra-large'];
-                  updateTheme({ fontSize: sizes[parseInt(e.target.value)] as any });
-                }}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary mt-2"
-              />
-            </div>
-
-            {/* Line Spacing */}
-            <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Khoảng cách dòng: {themeConfig.lineSpacing}</label>
-              <input 
-                type="range" min="1.0" max="2.0" step="0.1"
-                value={themeConfig.lineSpacing}
-                onChange={(e) => updateTheme({ lineSpacing: parseFloat(e.target.value) })}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
-              />
-            </div>
-
             {/* Color Theme */}
             <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Màu chủ đề</label>
+               <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Màu chủ đề</label>
               <div className="flex flex-wrap gap-3">
                  {['#1A73E8', '#00b14f', '#e91e63', '#9c27b0', '#ff9800', '#3f51b5'].map(color => (
                    <button 
@@ -160,26 +135,64 @@ const LeftSidebar: React.FC = () => {
             {/* Rich Text Format Bridge */}
             <div className="pt-4 border-t border-gray-100">
                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Định dạng đoạn bôi đen</label>
-               <div className="flex items-center space-x-2">
-                  <button 
-                    onClick={() => window.dispatchEvent(new CustomEvent('tiptap-format', { detail: { type: 'bold' } }))}
-                    className="w-10 h-10 flex items-center justify-center rounded-xl border border-gray-200 hover:bg-gray-100 font-bold transition-all"
-                  >B</button>
-                  <button 
-                    onClick={() => window.dispatchEvent(new CustomEvent('tiptap-format', { detail: { type: 'italic' } }))}
-                    className="w-10 h-10 flex items-center justify-center rounded-xl border border-gray-200 hover:bg-gray-100 italic transition-all"
-                  >I</button>
-                  <div className="w-[1px] h-6 bg-gray-200 mx-1" />
-                  <div className="flex-1 relative">
-                    <input 
-                      type="color" 
-                      onChange={(e) => window.dispatchEvent(new CustomEvent('tiptap-format', { detail: { type: 'color', value: e.target.value } }))}
-                      className="w-full h-10 rounded-xl cursor-pointer border border-gray-200 p-1 bg-white"
-                      title="Màu chữ đoạn bôi đen"
-                    />
+                <div className="flex flex-col space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <button 
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => dispatchFormat('bold')}
+                      className="w-10 h-10 flex items-center justify-center rounded-xl border border-gray-200 hover:bg-primary/10 hover:border-primary/30 hover:text-primary font-bold transition-all shadow-sm"
+                      title="In đậm"
+                    >B</button>
+                    <button 
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => dispatchFormat('italic')}
+                      className="w-10 h-10 flex items-center justify-center rounded-xl border border-gray-200 hover:bg-primary/10 hover:border-primary/30 hover:text-primary italic transition-all shadow-sm"
+                      title="In nghiêng"
+                    >I</button>
+                    <div className="w-[1px] h-6 bg-gray-200 mx-1" />
+                    <div className="flex-1 relative group">
+                      <input 
+                        type="color" 
+                        onChange={(e) => dispatchFormat('color', e.target.value)}
+                        className="w-full h-10 rounded-xl cursor-pointer border border-gray-200 p-1 bg-white hover:border-primary/30 transition-all shadow-sm"
+                        title="Màu chữ"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <div className="flex-1">
+                      <select 
+                        value={selectedFontSize}
+                        onChange={(e) => {
+                          setSelectedFontSize(e.target.value);
+                          dispatchFormat('fontSize', e.target.value);
+                        }}
+                        className="w-full border-gray-200 rounded-xl px-3 py-2 bg-gray-50 text-xs focus:ring-2 focus:ring-primary outline-none transition-all"
+                      >
+                        <option value="10">Cỡ chữ: 10px</option>
+                        <option value="11">Cỡ chữ: 11px</option>
+                        <option value="12">Cỡ chữ: 12px</option>
+                        <option value="13">Cỡ chữ: 13px</option>
+                        <option value="14">Cỡ chữ: 14px</option>
+                        <option value="16">Cỡ chữ: 16px</option>
+                        <option value="18">Cỡ chữ: 18px</option>
+                        <option value="20">Cỡ chữ: 20px</option>
+                        <option value="24">Cỡ chữ: 24px</option>
+                      </select>
+                    </div>
+                    <button 
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => dispatchFormat('fontSize', selectedFontSize)}
+                      className="px-3 h-8 bg-primary text-white text-[10px] font-bold rounded-lg hover:bg-primary-dark transition-all shadow-sm"
+                    >
+                      ÁP DỤNG
+                    </button>
                   </div>
                </div>
-               <p className="text-[10px] text-gray-400 mt-2 italic">* Bôi đen chữ trong CV rồi nhấn nút ở đây để thay đổi</p>
+               <p className="text-[10px] text-gray-400 mt-3 italic leading-relaxed border-l-2 border-primary/20 pl-2">
+                 * Hướng dẫn: Bôi đen đoạn chữ trong CV, sau đó nhấn các nút ở trên để định dạng.
+               </p>
             </div>
           </div>
         )}

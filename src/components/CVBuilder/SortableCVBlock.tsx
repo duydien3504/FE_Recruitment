@@ -6,9 +6,10 @@ interface Props {
   id: string;
   children: React.ReactNode;
   onRemove?: (id: string) => void;
+  noDelete?: boolean;
 }
 
-export const SortableCVBlock: React.FC<Props> = ({ id, children, onRemove }) => {
+export const SortableCVBlock: React.FC<Props> = ({ id, children, onRemove, noDelete }) => {
   const {
     attributes,
     listeners,
@@ -40,7 +41,7 @@ export const SortableCVBlock: React.FC<Props> = ({ id, children, onRemove }) => 
       </div>
 
       {/* Nút Xóa Block */}
-      {onRemove && (
+      {onRemove && !noDelete && (
         <button 
           onClick={() => onRemove(id)}
           className="absolute -right-3 -top-3 opacity-0 group-hover/block:opacity-100 bg-white shadow-md rounded-full p-1 text-red-500 hover:bg-red-50 border border-red-100 transition-opacity z-20"

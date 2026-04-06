@@ -24,10 +24,16 @@ export interface ThemeConfig {
   background?: string;
 }
 
+export interface ColumnLayout {
+  left: string[];
+  right: string[];
+}
+
 interface CvState {
   cvData: CvData;
   templateId: string;
   themeConfig: ThemeConfig;
+  columnLayout: ColumnLayout; // Added Column Layout
   atsScore: number;
   
   // Actions
@@ -36,6 +42,7 @@ interface CvState {
   setAtsScore: (score: number) => void;
   updateTheme: (config: Partial<ThemeConfig>) => void;
   updateSection: (section: string, data: any) => void;
+  setColumnLayout: (layout: ColumnLayout) => void; // Added Action
   reorderBlocks: (section: string, fromIndex: number, toIndex: number) => void;
 }
 
@@ -43,7 +50,7 @@ export const useCvStore = create<CvState>((set) => ({
   cvData: {},
   templateId: 'default_template',
   themeConfig: {
-    primaryColor: '#00b14f', // Màu xanh TopCV
+    primaryColor: '#00b14f', 
     layoutMode: '2-column',
     fontFamily: 'Be Vietnam Pro',
     fontSize: 'medium',
@@ -51,15 +58,20 @@ export const useCvStore = create<CvState>((set) => ({
     charSpacing: 0,
     background: '',
   },
+  columnLayout: {
+    left: ['profile', 'contact', 'about', 'skills'],
+    right: ['education', 'experience', 'projects', 'awards']
+  },
   atsScore: 0,
 
   setCvData: (data) => set({ cvData: data }),
   setTemplateId: (id) => set({ templateId: id }),
+  setColumnLayout: (layout) => set({ columnLayout: layout }),
   
   updateTheme: (config) => set((state) => ({ 
     themeConfig: { ...state.themeConfig, ...config } 
   })),
-  
+
   updateSection: (section, data) => set((state) => ({
     cvData: { ...state.cvData, [section]: data }
   })),

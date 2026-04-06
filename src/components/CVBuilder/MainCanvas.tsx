@@ -8,9 +8,9 @@ import { AiAssistantModal } from './AiAssistantModal';
 import { TiptapEditor } from './TiptapEditor';
 
 const MainCanvas: React.FC = () => {
-  const { cvData, updateSection, themeConfig } = useCvStore();
+  const { cvData, updateSection, themeConfig, columnLayout, setColumnLayout } = useCvStore();
   const [zoom, setZoom] = React.useState(100);
-  
+
   const [aiModalConfig, setAiModalConfig] = React.useState({
     isOpen: false,
     section: '',
@@ -18,33 +18,81 @@ const MainCanvas: React.FC = () => {
     currentText: ''
   });
 
-  // Zoom helpers
+  const SECTION_CONFIGS: Record<string, { label: string; icon: any }> = {
+    profile: { label: 'Ảnh & Họ tên', icon: null },
+    contact: { label: 'Liên hệ', icon: null },
+    about: { label: 'Mục tiêu', icon: null },
+    skills: { label: 'Kỹ năng', icon: null },
+    education: { label: 'Học vấn', icon: <><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></> },
+    experience: { label: 'Kinh nghiệm', icon: <><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></> },
+    projects: { label: 'Dự án', icon: <path d="m8 3 4 8 5-5 5 15H2L8 3z"/> },
+    awards: { label: 'Giải thưởng', icon: <><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></> }
+  };
+
   const handleZoomIn = () => setZoom(prev => Math.min(prev + 10, 150));
   const handleZoomOut = () => setZoom(prev => Math.max(prev - 10, 50));
   const handleResetZoom = () => setZoom(100);
 
-  // Section configuration for rendering
-  const sections = [
-    { id: 'education', label: 'Học vấn', icon: <><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></> },
-    { id: 'experience', label: 'Kinh nghiệm làm việc', icon: <><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></> },
-    { id: 'projects', label: 'Dự án', icon: <path d="m8 3 4 8 5-5 5 15H2L8 3z"/> },
-    { id: 'awards', label: 'Giải thưởng', icon: <><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></> }
-  ];
+  const findContainer = (id: string) => {
+    if (id in columnLayout) return id;
+    return Object.keys(columnLayout).find((key) => (columnLayout as any)[key].includes(id));
+  };
+
+  const handleDragOver = (event: any) => {
+    const { active, over } = event;
+    const overId = over?.id;
+
+    if (!overId || active.id === overId) return;
+
+    const activeContainer = findContainer(active.id as string);
+    const overContainer = findContainer(overId as string) || overId as string;
+
+    if (!activeContainer || !overContainer || activeContainer === overContainer) return;
+
+    const activeItems = (columnLayout as any)[activeContainer];
+    const overItems = (columnLayout as any)[overContainer];
+
+    const overIndex = overItems.indexOf(overId as string);
+
+    let newIndex;
+    if (overId in columnLayout) {
+      newIndex = overItems.length + 1;
+    } else {
+      const isBelowLastItem = overId && overIndex === overItems.length - 1;
+      const modifier = isBelowLastItem ? 1 : 0;
+      newIndex = overIndex >= 0 ? overIndex + modifier : overItems.length + 1;
+    }
+
+    setColumnLayout({
+      ...columnLayout,
+      [activeContainer]: activeItems.filter((item: string) => item !== active.id),
+      [overContainer]: [
+        ...overItems.slice(0, newIndex),
+        active.id,
+        ...overItems.slice(newIndex)
+      ]
+    } as any);
+  };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    if (!over || active.id === over.id) return;
+    if (!over) return;
 
-    // Find which section this ID belongs to
-    for (const section of sections) {
-       const list = cvData[section.id] || [];
-       if (list.some((item: any) => item.id === active.id)) {
-          const oldIndex = list.findIndex((item: any) => item.id === active.id);
-          const newIndex = list.findIndex((item: any) => item.id === over.id);
-          if (newIndex !== -1) {
-             updateSection(section.id, arrayMove(list, oldIndex, newIndex));
-          }
-          break;
+    const activeId = active.id as string;
+    const overId = over.id as string;
+
+    const activeContainer = findContainer(activeId);
+    const overContainer = findContainer(overId) || overId;
+
+    if (activeContainer && overContainer && activeContainer === overContainer) {
+       const activeIndex = (columnLayout as any)[activeContainer].indexOf(activeId);
+       const overIndex = (columnLayout as any)[overContainer].indexOf(overId);
+
+       if (activeIndex !== overIndex) {
+          setColumnLayout({
+             ...columnLayout,
+             [overContainer]: arrayMove((columnLayout as any)[overContainer], activeIndex, overIndex)
+          } as any);
        }
     }
   };
@@ -57,11 +105,6 @@ const MainCanvas: React.FC = () => {
      updateSection(section, newList);
   };
 
-  const removeItem = (id: string, section: string) => {
-     const list = Array.from(cvData[section] || []);
-     const newList = list.filter((item: any) => item.id !== id);
-     updateSection(section, newList);
-  };
 
   const skillsHtml = typeof cvData.skills === 'string' 
      ? cvData.skills 
@@ -79,6 +122,193 @@ const MainCanvas: React.FC = () => {
   };
 
   const dynamicFontSize = (getBaseFontSize() * zoom) / 100;
+
+  const renderSection = (sectionId: string, isDark: boolean) => {
+    const config = SECTION_CONFIGS[sectionId];
+    if (!config) return null;
+
+    if (sectionId === 'profile') {
+      return (
+        <SortableCVBlock key="profile" id="profile" noDelete>
+          <div className="text-center group/avatar mb-4">
+            <div className="w-40 h-40 mx-auto rounded-full border-4 border-white/20 overflow-hidden mb-4 bg-gray-100 flex items-center justify-center relative">
+              {cvData.personal?.avatarUrl ? (
+                  <img src={cvData.personal.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              )}
+            </div>
+            <TiptapEditor 
+              value={cvData.personal?.fullName || ''} 
+              onChange={(val) => updateSection('personal', { ...cvData.personal, fullName: val })}
+              editorClassName="text-center text-3xl font-bold uppercase tracking-wide text-white"
+              className="min-h-0"
+            />
+            <TiptapEditor 
+              value={cvData.personal?.title || ''} 
+              onChange={(val) => updateSection('personal', { ...cvData.personal, title: val })}
+              editorClassName="text-center text-sm italic text-gray-300 font-medium text-white"
+              className="min-h-0 mt-1"
+            />
+          </div>
+        </SortableCVBlock>
+      );
+    }
+
+    if (sectionId === 'contact') {
+      return (
+        <SortableCVBlock key="contact" id="contact" noDelete>
+          <div className="mb-4">
+            <h4 className="text-[10px] font-bold uppercase tracking-[2px] border-b border-white/10 pb-1 mb-3" style={{ color: themeConfig.primaryColor }}>LIÊN HỆ</h4>
+            <div className="space-y-2">
+              {[
+                { 
+                  icon: (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                  ), 
+                  value: cvData.personal?.phoneNumber || '', 
+                  field: 'phoneNumber' 
+                },
+                { 
+                  icon: (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                  ), 
+                  value: cvData.personal?.email || '', 
+                  field: 'email' 
+                },
+                { 
+                  icon: (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                  ), 
+                  value: cvData.personal?.address || '', 
+                  field: 'address' 
+                },
+              ].map((info, idx) => (
+                <div key={idx} className="flex items-start space-x-2 group">
+                  <span className="w-5 h-5 shrink-0 flex items-center justify-center rounded bg-white/10 text-white mt-0.5" style={{ color: themeConfig.primaryColor }}>{info.icon}</span>
+                  <div className="flex-1 min-h-0">
+                    <TiptapEditor 
+                      value={info.value}
+                      onChange={(val) => updateSection('personal', { ...cvData.personal, [info.field]: val })}
+                      editorClassName="text-white text-[10px] leading-tight"
+                      className="min-h-0"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </SortableCVBlock>
+      );
+    }
+
+    if (sectionId === 'about') {
+      return (
+        <SortableCVBlock key="about" id="about" noDelete>
+          <div className="mb-4">
+            <h4 className="text-[10px] font-bold uppercase tracking-[2px] border-b border-white/10 pb-1 mb-3" style={{ color: themeConfig.primaryColor }}>MỤC TIÊU NGHỀ NGHIỆP</h4>
+            <TiptapEditor 
+              value={cvData.about || ''}
+              onChange={(val) => updateSection('about', val)}
+              className="min-h-[40px]"
+              editorClassName="text-white opacity-90 italic text-[10px] leading-relaxed"
+            />
+          </div>
+        </SortableCVBlock>
+      );
+    }
+
+    if (sectionId === 'skills') {
+      return (
+        <SortableCVBlock key="skills" id="skills" noDelete>
+          <div className="mb-4">
+            <h4 className="text-[10px] font-bold uppercase tracking-[2px] border-b border-white/10 pb-1 mb-3" style={{ color: themeConfig.primaryColor }}>KỸ NĂNG</h4>
+            <TiptapEditor 
+                value={skillsHtml}
+                onChange={(val) => updateSection('skills', val)}
+                className="min-h-[60px]"
+                editorClassName="text-white opacity-90 text-[10px]"
+            />
+          </div>
+        </SortableCVBlock>
+      );
+    }
+
+    // Dynamic Sections (Education, Experience, etc.)
+    const items = cvData[sectionId] || [];
+    const textColor = isDark ? 'text-white' : 'text-gray-800';
+    const subTextColor = isDark ? 'text-gray-300' : 'text-gray-500';
+
+    return (
+      <SortableCVBlock key={sectionId} id={sectionId}>
+        <section className={isDark ? 'mb-4' : 'mb-0'}>
+          <div className="flex items-center space-x-4 mb-4">
+            {!isDark && (
+              <div className="w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-white" style={{ backgroundColor: themeConfig.primaryColor }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{config.icon}</svg>
+              </div>
+            )}
+            <TiptapEditor 
+              value={cvData.customLabels?.[sectionId] || config.label}
+              onChange={(val) => {
+                const customLabels = cvData.customLabels || {};
+                updateSection('customLabels', { ...customLabels, [sectionId]: val });
+              }}
+              editorClassName={`${isDark ? 'text-[10px] border-b border-white/10 pb-1' : 'text-lg'} font-bold uppercase tracking-wider ${isDark ? 'w-full' : ''}`}
+              className="min-h-0 flex-1"
+              style={{ color: isDark ? themeConfig.primaryColor : '#2d3748' }}
+            />
+          </div>
+
+          <SortableContext items={items.map((i: any) => i.id)} strategy={verticalListSortingStrategy}>
+            {items.map((item: any) => (
+              <div key={item.id} className={`mb-4 group relative ${isDark ? '' : 'p-3 hover:bg-gray-50 rounded-xl transition-all border border-transparent hover:border-gray-100'}`}>
+                <div className={`${isDark ? 'flex flex-col' : 'flex justify-between items-start'} mb-1`}>
+                  <div className="flex-1 min-w-0">
+                    <TiptapEditor 
+                      value={item.title || item.school || item.company || ''}
+                      onChange={(val) => {
+                        const field = sectionId === 'education' ? 'school' : (sectionId === 'experience' ? 'title' : 'title');
+                        updateItem(item.id, sectionId, field, val);
+                      }}
+                      editorClassName={`font-bold ${textColor} ${isDark ? 'text-xs' : 'text-base'}`}
+                      className="min-h-0"
+                      placeholder="Tiêu đề / Tên đơn vị"
+                    />
+                    <TiptapEditor 
+                      value={item.degree || item.company || ''}
+                      onChange={(val) => {
+                        const field = sectionId === 'education' ? 'degree' : 'company';
+                        updateItem(item.id, sectionId, field, val);
+                      }}
+                      editorClassName={`${isDark ? 'text-[10px]' : 'text-sm'} ${subTextColor} italic mt-1`}
+                      className="min-h-0"
+                      placeholder="Vị trí / Ngành học"
+                    />
+                  </div>
+                  <TiptapEditor 
+                    value={item.period || ''}
+                    onChange={(val) => updateItem(item.id, sectionId, 'period', val)}
+                    editorClassName={`${isDark ? 'text-[9px] text-left mt-1' : 'text-xs text-right w-32'} font-semibold text-gray-400`}
+                    className="min-h-0"
+                    placeholder="Thời gian"
+                  />
+                </div>
+                <div className={`${textColor} relative prose prose-sm max-w-none`}>
+                  <TiptapEditor 
+                    value={item.description || ''}
+                    onChange={(val) => updateItem(item.id, sectionId, 'description', val)}
+                    className="min-h-0"
+                    editorClassName={`${isDark ? 'text-[10px]' : 'text-sm'} ${isDark ? 'text-white opacity-80' : 'text-gray-600'}`}
+                  />
+                </div>
+              </div>
+            ))}
+          </SortableContext>
+        </section>
+      </SortableCVBlock>
+    );
+  };
 
   return (
     <div className="flex-1 min-w-[1100px] shrink-0 bg-gray-200 overflow-y-auto flex flex-col items-center py-6 px-4 scroll-smooth relative">
@@ -108,170 +338,36 @@ const MainCanvas: React.FC = () => {
            lineHeight: themeConfig.lineSpacing,
            letterSpacing: `${themeConfig.charSpacing}px`,
            transform: `scale(${zoom / 100})`,
-           marginBottom: `${(zoom - 100) * 3}px`, // Bù khoảng trống khi scale
+           marginBottom: `${(zoom - 100) * 3}px`,
            fontSize: `${dynamicFontSize}px`
          }}
        >
-         <div className="flex min-h-[297mm]">
-            {/* Cột Trái (Dark Sidebar) */}
-            <div 
-              className="w-[95mm] flex-shrink-0 text-white p-8 space-y-10"
-              style={{ backgroundColor: '#2d3e50' }}
-            >
-               {/* Profile Image & Name */}
-               <div className="text-center group/avatar">
-                  <div className="w-40 h-40 mx-auto rounded-full border-4 border-white/20 overflow-hidden mb-6 bg-gray-100 flex items-center justify-center relative group">
-                     {cvData.personal?.avatarUrl ? (
-                         <img src={cvData.personal.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                     ) : (
-                         <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                     )}
-                  </div>
-                  <input 
-                    type="text" 
-                    value={cvData.personal?.fullName || ''} 
-                    onChange={(e) => updateSection('personal', { ...cvData.personal, fullName: e.target.value })}
-                    className="w-full bg-transparent text-center text-3xl font-bold uppercase tracking-wide border-0 focus:ring-0 p-0 mb-1 outline-none placeholder-white/30"
-                    placeholder="HỌ TÊN"
-                  />
-                  <input 
-                    type="text" 
-                    value={cvData.personal?.title || ''} 
-                    onChange={(e) => updateSection('personal', { ...cvData.personal, title: e.target.value })}
-                    className="w-full bg-transparent text-center text-sm italic text-gray-300 font-medium border-0 focus:ring-0 p-0 outline-none placeholder-white/20"
-                    placeholder="Vị trí ứng tuyển"
-                  />
+          <DndContext 
+            collisionDetection={closestCenter} 
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="flex min-h-[297mm]">
+               {/* Cột Trái (Dark Sidebar) */}
+               <div 
+                 className="w-[95mm] flex-shrink-0 text-white p-6"
+                 style={{ backgroundColor: '#2d3e50' }}
+               >
+                  <SortableContext items={columnLayout.left} strategy={verticalListSortingStrategy}>
+                     {columnLayout.left.map((sectionId) => renderSection(sectionId, true))}
+                     {columnLayout.left.length === 0 && <div className="h-40 border-2 border-dashed border-white/10 rounded-xl flex items-center justify-center text-white/20 text-xs text-center border-spacing-4">Kéo nội dung vào đây</div>}
+                  </SortableContext>
                </div>
 
-               {/* LH Section */}
-               <div className="space-y-4">
-                  <h3 className="text-sm font-bold uppercase tracking-[2px] border-b border-white/10 pb-2 mb-4" style={{ color: themeConfig.primaryColor }}>LIÊN HỆ</h3>
-                  <div className="space-y-3 text-[11px]">
-                     {[
-                       { icon: '📞', value: cvData.personal?.phoneNumber || '', field: 'phoneNumber', placeholder: 'Số điện thoại' },
-                       { icon: '✉️', value: cvData.personal?.email || '', field: 'email', placeholder: 'Email cá nhân' },
-                       { icon: '📍', value: cvData.personal?.address || '', field: 'address', placeholder: 'Địa chỉ cư trú' },
-                     ].map((info, idx) => (
-                       <div key={idx} className="flex items-center space-x-3 group">
-                          <span className="w-5 h-5 flex items-center justify-center rounded bg-white/10 text-[10px]">{info.icon}</span>
-                          <input 
-                            type="text"
-                            value={info.value}
-                            onChange={(e) => updateSection('personal', { ...cvData.personal, [info.field]: e.target.value })}
-                            className="bg-transparent border-0 focus:ring-0 p-0 text-[11px] outline-none flex-1 placeholder-white/20"
-                            placeholder={info.placeholder}
-                          />
-                       </div>
-                     ))}
-                  </div>
-               </div>
-
-               {/* Mục tiêu nghề nghiệp */}
-               <div className="space-y-4">
-                  <h3 className="text-sm font-bold uppercase tracking-[2px] border-b border-white/10 pb-2 mb-4" style={{ color: themeConfig.primaryColor }}>MỤC TIÊU NGHỀ NGHIỆP</h3>
-                  <textarea 
-                    value={cvData.about || ''}
-                    onChange={(e) => updateSection('about', e.target.value)}
-                    className="w-full bg-transparent border-0 focus:ring-0 p-0 text-[11px] leading-relaxed italic opacity-80 resize-none min-h-[80px] outline-none placeholder-white/20"
-                    placeholder="Mô tả mục tiêu nghề nghiệp..."
-                  />
-               </div>
-
-               {/* Kỹ năng */}
-               <div className="space-y-4">
-                  <h3 className="text-sm font-bold uppercase tracking-[2px] border-b border-white/10 pb-2 mb-4" style={{ color: themeConfig.primaryColor }}>KỸ NĂNG</h3>
-                  <div className="text-[11px] opacity-80 cv-quill-editor-dark">
-                     <TiptapEditor 
-                        value={skillsHtml}
-                        onChange={(val) => updateSection('skills', val)}
-                        className="min-h-[100px]"
-                     />
-                  </div>
+               {/* Cột Phải (Main Content) */}
+               <div className="flex-1 p-12 space-y-10 bg-white">
+                  <SortableContext items={columnLayout.right} strategy={verticalListSortingStrategy}>
+                     {columnLayout.right.map((sectionId) => renderSection(sectionId, false))}
+                     {columnLayout.right.length === 0 && <div className="h-40 border-2 border-dashed border-gray-100 rounded-xl flex items-center justify-center text-gray-300 text-xs text-center border-spacing-4">Kéo nội dung vào đây<br/>để hiển thị ở cột chính</div>}
+                  </SortableContext>
                </div>
             </div>
-
-            {/* Cột Phải (Main Content) */}
-            <div className="flex-1 p-12 space-y-12 bg-white">
-               
-               <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                  {sections.map((section) => {
-                    const items = cvData[section.id] || [];
-                    if (items.length === 0) return null;
-
-                    return (
-                      <section key={section.id}>
-                        <div className="flex items-center space-x-4 mb-6">
-                           <div className="w-10 h-10 rounded-full flex items-center justify-center text-white" style={{ backgroundColor: themeConfig.primaryColor }}>
-                              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{section.icon}</svg>
-                           </div>
-                           <h3 className="text-lg font-bold uppercase tracking-wider text-gray-800">{section.label}</h3>
-                        </div>
-
-                        <SortableContext items={items.map((i: any) => i.id)} strategy={verticalListSortingStrategy}>
-                           {items.map((item: any) => (
-                             <SortableCVBlock key={item.id} id={item.id} onRemove={(id) => removeItem(id, section.id)}>
-                                <div className="mb-8 group relative p-3 hover:bg-gray-50 rounded-xl transition-all border border-transparent hover:border-gray-100">
-                                   <div className="flex justify-between items-start mb-2">
-                                      <div className="flex-1">
-                                         <input 
-                                           type="text" 
-                                           value={item.title || item.school || item.company || ''}
-                                           onChange={(e) => {
-                                              const field = section.id === 'education' ? 'school' : (section.id === 'experience' ? 'title' : 'title');
-                                              updateItem(item.id, section.id, field, e.target.value);
-                                           }}
-                                           className="block font-bold text-gray-800 bg-transparent border-0 focus:ring-0 p-0 text-base outline-none w-full placeholder-gray-300"
-                                           placeholder="Tiêu đề / Tên đơn vị"
-                                         />
-                                         <input 
-                                           type="text" 
-                                           value={item.degree || item.company || ''}
-                                           onChange={(e) => {
-                                              const field = section.id === 'education' ? 'degree' : 'company';
-                                              updateItem(item.id, section.id, field, e.target.value);
-                                           }}
-                                           className="block text-sm text-gray-500 italic mt-1 bg-transparent border-0 focus:ring-0 p-0 outline-none w-full placeholder-gray-200"
-                                           placeholder="Vị trí / Ngành học"
-                                         />
-                                      </div>
-                                      <input 
-                                         type="text" 
-                                         value={item.period || ''}
-                                         onChange={(e) => updateItem(item.id, section.id, 'period', e.target.value)}
-                                         className="text-xs font-semibold text-gray-400 text-right bg-transparent border-0 focus:ring-0 p-0 outline-none w-32 placeholder-gray-200"
-                                         placeholder="Thời gian"
-                                      />
-                                   </div>
-                                   <div className="text-gray-600 relative">
-                                      <TiptapEditor 
-                                         value={item.description || ''}
-                                         onChange={(val) => updateItem(item.id, section.id, 'description', val)}
-                                         className="min-h-[40px]"
-                                      />
-                                      {section.id === 'experience' && (
-                                         <button 
-                                           onClick={() => setAiModalConfig({
-                                             isOpen: true,
-                                             section: 'Kinh nghiệm',
-                                             id: item.id,
-                                             currentText: item.description || ''
-                                           })}
-                                           className="absolute bottom-2 right-2 text-[10px] bg-emerald-100 text-emerald-700 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity flex items-center shadow-sm"
-                                         >
-                                           ✨ AI Viết Dùm
-                                         </button>
-                                      )}
-                                   </div>
-                                </div>
-                             </SortableCVBlock>
-                           ))}
-                        </SortableContext>
-                      </section>
-                    );
-                  })}
-               </DndContext>
-            </div>
-         </div>
+          </DndContext>
        </div>
 
        <AiAssistantModal 

@@ -7,18 +7,23 @@ import MainCanvas from '../components/CVBuilder/MainCanvas';
 import { CvService } from '../services/cv.service';
 
 const CreateCVPage: React.FC = () => {
-  const { cvData, themeConfig, atsScore } = useCvStore();
+  const { cvData, themeConfig, atsScore, columnLayout } = useCvStore();
   const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     console.log('✅ Chúc mừng! CV Store đã khởi tạo thành công.');
-    console.log('📦 Current State Injection:', { cvData, themeConfig, atsScore });
-  }, [cvData, themeConfig, atsScore]);
+    console.log('📦 Current State Injection:', { cvData, themeConfig, atsScore, columnLayout });
+  }, [cvData, themeConfig, atsScore, columnLayout]);
 
   const handleExportPdf = async () => {
     setIsExporting(true);
     try {
-      const response = await CvService.exportCv();
+      const response = await CvService.exportCv({
+         cvData,
+         themeConfig,
+         columnLayout, 
+         templateId: '2-column-dark' 
+      });
       const downloadUrl = window.URL.createObjectURL(new Blob([response]));
       const link = document.createElement('a');
       link.href = downloadUrl;
@@ -91,7 +96,23 @@ const CreateCVPage: React.FC = () => {
                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
                  <span>Xem trước</span>
               </button>
-              <button className="flex items-center space-x-2 bg-primary hover:bg-blue-600 text-white px-5 py-1.5 rounded-lg font-bold text-sm shadow-sm transition-all">
+              <button 
+                onClick={async () => {
+                  try {
+                    await CvService.updateDraft({
+                      cvData,
+                      themeConfig,
+                      templateId: '2-column-dark',
+                      columnLayout
+                    });
+                    alert("Đã lưu CV thành công!");
+                  } catch (err) {
+                    console.error("Lỗi khi lưu CV:", err);
+                    alert("Có lỗi xảy ra khi lưu CV.");
+                  }
+                }}
+                className="flex items-center space-x-2 bg-primary hover:bg-blue-600 text-white px-5 py-1.5 rounded-lg font-bold text-sm shadow-sm transition-all"
+              >
                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
                  <span>Lưu CV</span>
               </button>
