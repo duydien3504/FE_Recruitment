@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useCvStore } from '../../store/cvStore';
 import { CvService } from '../../services/cv.service';
+import TemplateGalleryPanel from './TemplateGalleryPanel';
 
 const LeftSidebar: React.FC = () => {
   const { themeConfig, updateTheme, cvData, setCvData, updateSection } = useCvStore();
@@ -224,12 +225,28 @@ const LeftSidebar: React.FC = () => {
            </div>
         )}
 
-        {(activeTab === 'layout' || activeTab === 'templates' || activeTab === 'ai' || activeTab === 'library') && (
+        {/* Template Gallery — tab 'Đổi mẫu CV' và 'Thư viện CV' đều dùng chung 1 component */}
+        {(activeTab === 'templates' || activeTab === 'library') && (
+          <TemplateGalleryPanel />
+        )}
+
+        {/* Layout tab — placeholder (chưa implement) */}
+        {activeTab === 'layout' && (
           <div className="flex flex-col items-center justify-center p-8 text-center space-y-4 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
              <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm">
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-primary" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-primary" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
              </div>
-             <p className="text-sm text-gray-500">Mục <b>{tabs.find(t => t.id === activeTab)?.label}</b> đang được tích hợp thêm dữ liệu.</p>
+             <p className="text-sm text-gray-500">Mục <b>Bố cục</b> đang được tích hợp thêm dữ liệu.</p>
+          </div>
+        )}
+
+        {/* AI tab — placeholder (chưa implement) */}
+        {activeTab === 'ai' && (
+          <div className="flex flex-col items-center justify-center p-8 text-center space-y-4 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+             <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-primary" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+             </div>
+             <p className="text-sm text-gray-500">Mục <b>Gợi ý viết CV</b> đang được tích hợp AI.</p>
           </div>
         )}
       </div>

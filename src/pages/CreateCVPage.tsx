@@ -4,11 +4,15 @@ import { useCvStore } from '../store/cvStore';
 import Header from '../components/Header';
 import LeftSidebar from '../components/CVBuilder/LeftSidebar';
 import MainCanvas from '../components/CVBuilder/MainCanvas';
+import PreviewModal from '../components/CVBuilder/PreviewModal';
 import { CvService } from '../services/cv.service';
 
 const CreateCVPage: React.FC = () => {
-  const { cvData, themeConfig, atsScore, columnLayout } = useCvStore();
+  const { cvData, themeConfig, atsScore, columnLayout, templateId } = useCvStore();
   const [isExporting, setIsExporting] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState('');
+  const [isRendering, setIsRendering] = useState(false);
 
   useEffect(() => {
     console.log('✅ Chúc mừng! CV Store đã khởi tạo thành công.');
@@ -18,11 +22,11 @@ const CreateCVPage: React.FC = () => {
   const handleExportPdf = async () => {
     setIsExporting(true);
     try {
-      const response = await CvService.exportCv({
+       const response = await CvService.exportCv({
          cvData,
          themeConfig,
-         columnLayout, 
-         templateId: '2-column-dark' 
+         columnLayout,
+         templateId: templateId || '2-column-dark'  // fallback nếu chưa chọn mẫu
       });
       const downloadUrl = window.URL.createObjectURL(new Blob([response]));
       const link = document.createElement('a');
@@ -37,6 +41,25 @@ const CreateCVPage: React.FC = () => {
       alert("Lỗi xuất PDF. Vui lòng kiểm tra lại dịch vụ Backend.");
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const handlePreview = async () => {
+    setIsRendering(true);
+    try {
+      const html = await CvService.getPreviewHtml({
+        cvData,
+        themeConfig,
+        columnLayout,
+        templateId
+      });
+      setPreviewHtml(html);
+      setIsPreviewOpen(true);
+    } catch (err) {
+      console.error("Lỗi render xem trước:", err);
+      alert("Không thể tải bản xem trước.");
+    } finally {
+      setIsRendering(false);
     }
   };
 
@@ -92,8 +115,19 @@ const CreateCVPage: React.FC = () => {
                  )}
                  <span>Tải xuống PDF</span>
               </button>
-              <button className="flex items-center space-x-2 text-xs font-semibold text-slate-500 hover:text-slate-800 px-3 py-1.5 rounded-lg border border-gray-200 transition-colors">
-                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+              <button 
+                onClick={handlePreview}
+                disabled={isRendering}
+                className="flex items-center space-x-2 text-xs font-semibold text-slate-500 hover:text-slate-800 px-3 py-1.5 rounded-lg border border-gray-200 transition-colors disabled:opacity-50"
+              >
+                 {isRendering ? (
+                    <svg className="animate-spin h-4 w-4 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+                 ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                 )}
                  <span>Xem trước</span>
               </button>
               <button 
@@ -102,7 +136,7 @@ const CreateCVPage: React.FC = () => {
                     await CvService.updateDraft({
                       cvData,
                       themeConfig,
-                      templateId: '2-column-dark',
+                      templateId: templateId || '2-column-dark',
                       columnLayout
                     });
                     alert("Đã lưu CV thành công!");
@@ -131,6 +165,12 @@ const CreateCVPage: React.FC = () => {
           {/* Component Bản nháp CV thật để user soi (sẽ chiếm trọn không gian còn lại) */}
           <MainCanvas />
         </main>
+
+        <PreviewModal 
+          isOpen={isPreviewOpen} 
+          onClose={() => setIsPreviewOpen(false)} 
+          htmlContent={previewHtml} 
+        />
       </div>
     </div>
   );

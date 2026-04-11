@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { getAccessToken } from '../utils/auth';
+import type { GetTemplatesResponse, CvTemplate } from '../types/cv.types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
@@ -34,10 +35,18 @@ export const CvService = {
     return response.data;
   },
   
-  // Lấy template CV đa ngành (GET /api/cv-builder/templates)
-  getTemplates: async (industry?: string) => {
-    const params = industry ? { industry } : {};
-    const response = await apiClient.get('/cv-builder/templates', { params });
+  // Lấy danh sách template CV (GET /api/v1/cv-builder/templates)
+  // Public endpoint — không cần token
+  getTemplates: async (category?: string): Promise<GetTemplatesResponse> => {
+    const params = category ? { category } : {};
+    // Public endpoint nên không cần header Authorization
+    const response = await axios.get(`${API_URL}/api/v1/cv-builder/templates`, { params });
+    return response.data;
+  },
+
+  // Lấy thông tin 1 template theo id
+  getTemplateById: async (id: string): Promise<{ success: boolean; data: CvTemplate }> => {
+    const response = await axios.get(`${API_URL}/api/v1/cv-builder/templates/${id}`);
     return response.data;
   },
   
@@ -58,6 +67,12 @@ export const CvService = {
     const response = await apiClient.post('/cv-builder/export', payload, {
       responseType: 'blob' // Cực kỳ quan trọng để bắt file stream download
     });
+    return response.data;
+  },
+
+  // Lấy HTML xem trước (POST /api/v1/cv-builder/preview)
+  getPreviewHtml: async (payload: any): Promise<string> => {
+    const response = await apiClient.post('/cv-builder/preview', payload);
     return response.data;
   }
 };

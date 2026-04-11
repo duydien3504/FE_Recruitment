@@ -48,7 +48,7 @@ interface CvState {
 
 export const useCvStore = create<CvState>((set) => ({
   cvData: {},
-  templateId: 'default_template',
+  templateId: '',   // sẽ được điền khi user chọn mẫu hoặc khi load draft từ server
   themeConfig: {
     primaryColor: '#00b14f', 
     layoutMode: '2-column',
