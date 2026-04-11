@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { DEFAULT_CV_TEMPLATE_ID } from '../constants/cvTemplateDefaults';
 
 // Define structures based on Backend design
 export interface BlockData {
@@ -48,7 +49,7 @@ interface CvState {
 
 export const useCvStore = create<CvState>((set) => ({
   cvData: {},
-  templateId: 'default_template',
+  templateId: DEFAULT_CV_TEMPLATE_ID,
   themeConfig: {
     primaryColor: '#00b14f', 
     layoutMode: '2-column',

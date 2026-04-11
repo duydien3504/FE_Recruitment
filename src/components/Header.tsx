@@ -24,19 +24,21 @@ export default function Header() {
                     setIsLoggedIn(true);
                     setUser(parsedUser);
 
-                    // Check if user has company if they are employer or candidate
-                    const checkCompany = async () => {
-                        try {
-                            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-                            const response = await fetchWithAuth(`${apiUrl}/api/v1/companies/me`);
-                            if (response.ok) {
-                                setHasCompany(true);
+                    // Only check company for employer role
+                    if (parsedUser.role?.toLowerCase() === 'employer' || parsedUser.roleName?.toLowerCase() === 'employer') {
+                        const checkCompany = async () => {
+                            try {
+                                const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+                                const response = await fetchWithAuth(`${apiUrl}/api/v1/companies/me`);
+                                if (response.ok) {
+                                    setHasCompany(true);
+                                }
+                            } catch (err) {
+                                console.error("Error checking company status:", err);
                             }
-                        } catch (err) {
-                            console.error("Error checking company status:", err);
-                        }
-                    };
-                    checkCompany();
+                        };
+                        checkCompany();
+                    }
                 }
             } catch (error) {
                 console.error("Failed to parse user data:", error);

@@ -26,7 +26,8 @@ import {
     Video,
     DollarSign,
     Bell,
-    CreditCard
+    CreditCard,
+    Download
 } from 'lucide-react';
 import {
     AreaChart,
@@ -141,9 +142,14 @@ export default function DashboardPage() {
         location_id: 0,
         level_id: 0,
         salary_min: 0,
-        salary_max: 0
+        salary_max: 0,
+        job_type: 'fulltime',
+        experience_required: '',
+        quantity: 1
     });
     const [categories, setCategories] = useState<Category[]>([]);
+    const [locations, setLocations] = useState<any[]>([]);
+    const [levels, setLevels] = useState<any[]>([]);
     const [isSubmittingJob, setIsSubmittingJob] = useState(false);
 
     // Applications Management State
@@ -151,6 +157,7 @@ export default function DashboardPage() {
     const [applicationsLoading, setApplicationsLoading] = useState(false);
     const [selectedJobIdForApps, setSelectedJobIdForApps] = useState<string | null>(null);
     const [viewingApplication, setViewingApplication] = useState<any | null>(null);
+    const [previewCvUrl, setPreviewCvUrl] = useState<string | null>(null);
     const [applicationStatusUpdating, setApplicationStatusUpdating] = useState<string | null>(null);
     // Interviews State
     const [interviews, setInterviews] = useState<any[]>([]);
@@ -160,6 +167,7 @@ export default function DashboardPage() {
         applicationId: 0,
         interviewDate: '',
         interviewTime: '',
+        type: 'Online',
         location: '',
         meetingLink: '',
         note: ''
@@ -458,13 +466,18 @@ export default function DashboardPage() {
     };
 
     const handleEditInterview = (interview: any) => {
+        const timeStr = interview.interview_time || interview.interviewAt || interview.startTime;
+        const defaultDateStr = timeStr ? new Date(timeStr).toISOString().split('T')[0] : '';
+        const defaultTimeStr = timeStr ? new Date(timeStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '';
+        
         setInterviewFormData({
-            applicationId: interview.applicationId,
-            interviewDate: new Date(interview.startTime).toISOString().split('T')[0],
-            interviewTime: new Date(interview.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
-            location: interview.location,
-            meetingLink: interview.meetingLink,
-            note: interview.description || ''
+            applicationId: interview.applicationId || interview.application_id,
+            interviewDate: defaultDateStr,
+            interviewTime: defaultTimeStr,
+            type: interview.type || 'Online',
+            location: interview.location || '',
+            meetingLink: interview.meetingLink || interview.meeting_link || '',
+            note: interview.note || interview.description || ''
         });
         // We need to store the editing ID somewhere, extending state or reusing selectedApplicationForInterview loosely
         // Better to add a state: const [editingInterviewId, setEditingInterviewId] = useState<string | null>(null);
@@ -543,15 +556,18 @@ export default function DashboardPage() {
         }
     };
 
-    const markAsRead = async (id: string) => {
+    const markAsRead = async (notif: any) => {
+        const id = notif.notificationId || notif.id;
+        if (!id) return;
         try {
             const response = await fetchWithAuth(`${apiUrl}/api/v1/notifications/${id}/read`, {
                 method: 'PATCH'
             });
             if (response.ok) {
-                setNotifications(prev => prev.map(n =>
-                    n.notificationId === id ? { ...n, isRead: true } : n
-                ));
+                setNotifications(prev => prev.map(n => {
+                    const nId = n.notificationId || n.id;
+                    return nId === id ? { ...n, isRead: true } : n;
+                }));
                 setUnreadCount(prev => Math.max(0, prev - 1));
             }
         } catch (error) {
@@ -580,6 +596,7 @@ export default function DashboardPage() {
             applicationId: application.applicationId,
             interviewDate: '',
             interviewTime: '',
+            type: 'Online',
             location: '',
             meetingLink: '',
             note: ''
@@ -587,6 +604,29 @@ export default function DashboardPage() {
         setShowInterviewModal(true);
     };
 
+    const handleDownloadCV = async (url: string, filename: string) => {
+        try {
+            toast.loading('Đang chuẩn bị file tải về...', { id: 'downloadCv' });
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Không thể fetch file');
+            const blob = await response.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = filename || 'CV_Candidate.pdf';
+            document.body.appendChild(link);
+            link.click();
+            window.URL.revokeObjectURL(blobUrl);
+            document.body.removeChild(link);
+            toast.success('Đã tải thành công', { id: 'downloadCv' });
+        } catch (error) {
+            console.error('Error downloading CV:', error);
+            toast.error('File không hỗ trợ tải trực tiếp do giới hạn bảo mật (CORS). Đang mở tab mới...', { id: 'downloadCv', duration: 4000 });
+            setTimeout(() => {
+                window.open(url, '_blank');
+            }, 1000);
+        }
+    };
 
     const handleScheduleInterview = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -595,12 +635,14 @@ export default function DashboardPage() {
 
             const payload = {
                 applicationId: interviewFormData.applicationId,
-                startTime: dateTime.toISOString(),
+                interview_time: dateTime.toISOString(),
+                type: interviewFormData.type,
                 location: interviewFormData.location,
-                meetingLink: interviewFormData.meetingLink,
-                description: interviewFormData.note,
-                title: `Interview` // Simplified title
+                meeting_link: interviewFormData.meetingLink,
+                note: interviewFormData.note
             };
+
+            console.log('Sending interview payload:', payload);
 
             const url = editingInterviewId
                 ? `${apiUrl}/api/v1/interviews/${editingInterviewId}`
@@ -620,7 +662,10 @@ export default function DashboardPage() {
                 setEditingInterviewId(null); // Reset
                 if (activeTab === 'Interviews') fetchInterviews();
             } else {
-                toast.error('Failed to save interview');
+                const errorData = await response.json().catch(() => null);
+                console.error('Interview schedule error 400:', errorData);
+                const apiMsg = errorData?.error?.message || errorData?.message || 'Failed to save interview';
+                toast.error(apiMsg);
             }
         } catch (error) {
             console.error('Error saving interview:', error);
@@ -680,8 +725,23 @@ export default function DashboardPage() {
 
     const fetchMetadata = async () => {
         try {
-            const catRes = await fetch(`${apiUrl}/api/v1/categories`);
-            if (catRes.ok) setCategories((await catRes.json()).data || []);
+            const [catRes, locRes, levRes] = await Promise.all([
+                fetch(`${apiUrl}/api/v1/categories`),
+                fetch(`${apiUrl}/api/v1/locations`),
+                fetch(`${apiUrl}/api/v1/levels`)
+            ]);
+            if (catRes.ok) {
+                const catJson = await catRes.json();
+                setCategories(Array.isArray(catJson.data) ? catJson.data : []);
+            }
+            if (locRes.ok) {
+                const locJson = await locRes.json();
+                setLocations(Array.isArray(locJson.data) ? locJson.data : []);
+            }
+            if (levRes.ok) {
+                const levJson = await levRes.json();
+                setLevels(Array.isArray(levJson.data) ? levJson.data : []);
+            }
         } catch (error) {
             console.error('Error fetching metadata:', error);
         }
@@ -793,7 +853,10 @@ export default function DashboardPage() {
             location_id: job.location?.locationId || 0,
             level_id: job.level?.levelId || 0,
             salary_min: job.salaryMin,
-            salary_max: job.salaryMax
+            salary_max: job.salaryMax,
+            job_type: (job as any).jobType || 'fulltime',
+            experience_required: (job as any).experienceRequired || '',
+            quantity: (job as any).quantity || 1
         });
         setShowJobModal(true);
     };
@@ -808,21 +871,59 @@ export default function DashboardPage() {
             location_id: 0,
             level_id: 0,
             salary_min: 0,
-            salary_max: 0
+            salary_max: 0,
+            job_type: 'fulltime',
+            experience_required: '',
+            quantity: 1
         });
         setShowJobModal(true);
     };
 
     const handleJobSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Validate required fields
+        if (!jobFormData.category_id || jobFormData.category_id === 0) {
+            toast.error('Vui lòng chọn ngành nghề');
+            return;
+        }
+        if (!jobFormData.location_id || jobFormData.location_id === 0) {
+            toast.error('Vui lòng chọn địa điểm');
+            return;
+        }
+        if (!jobFormData.level_id || jobFormData.level_id === 0) {
+            toast.error('Vui lòng chọn cấp bậc');
+            return;
+        }
+        if (!jobFormData.experience_required) {
+            toast.error('Vui lòng chọn kinh nghiệm yêu cầu');
+            return;
+        }
+
         setIsSubmittingJob(true);
         try {
             const method = editingJob ? 'PUT' : 'POST';
             const endpoint = editingJob ? `${apiUrl}/api/v1/jobs/${editingJob.jobPostId}` : `${apiUrl}/api/v1/jobs`;
 
+            const payload = {
+                title: jobFormData.title,
+                description: jobFormData.description,
+                requirements: jobFormData.requirements,
+                category_id: jobFormData.category_id,
+                location_id: jobFormData.location_id,
+                level_id: jobFormData.level_id,
+                salary_min: jobFormData.salary_min,
+                salary_max: jobFormData.salary_max,
+                job_type: jobFormData.job_type,
+                experience_required: jobFormData.experience_required,
+                quantity: jobFormData.quantity
+            };
+
+            console.log('Submitting job payload:', payload);
+
             const response = await fetchWithAuth(endpoint, {
                 method,
-                body: JSON.stringify(jobFormData)
+                body: JSON.stringify(payload)
             });
 
             if (response.ok) {
@@ -835,15 +936,18 @@ export default function DashboardPage() {
                     window.location.href = json.data;
                 }
             } else {
-                const errorData = await response.json();
-                toast.error(errorData.message || 'Thao tác thất bại');
+                const errorData = await response.json().catch(() => ({}));
+                console.error('Job submit error response:', errorData);
+                toast.error(errorData.message || `Lỗi ${response.status}: Thao tác thất bại`);
             }
         } catch (error) {
+            console.error('Job submit error:', error);
             toast.error('Lỗi khi lưu tin tuyển dụng');
         } finally {
             setIsSubmittingJob(false);
         }
     };
+
 
     const filteredJobs = jobs.filter(job => {
         const matchesKeyword = job.title.toLowerCase().includes(jobFilters.keyword.toLowerCase());
@@ -863,8 +967,6 @@ export default function DashboardPage() {
     }
 
     const navigationItems = [
-        { name: 'Overview', icon: LayoutDashboard },
-        { name: 'Jobs Management', icon: Briefcase },
         { name: 'Overview', icon: LayoutDashboard },
         { name: 'Jobs Management', icon: Briefcase },
         { name: 'Applications', icon: UsersIcon },
@@ -986,24 +1088,27 @@ export default function DashboardPage() {
                                                 </div>
                                                 <div className="max-h-[400px] overflow-y-auto">
                                                     {notifications.length > 0 ? (
-                                                        notifications.map((notif: any) => (
-                                                            <div
-                                                                key={notif.notificationId}
-                                                                className={`p-6 border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer ${!notif.isRead ? 'bg-blue-50/30' : ''}`}
-                                                                onClick={() => !notif.isRead && markAsRead(notif.notificationId)}
-                                                            >
-                                                                <div className="flex items-start gap-4">
-                                                                    <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${!notif.isRead ? 'bg-blue-600' : 'bg-slate-200'}`}></div>
-                                                                    <div className="flex-1">
-                                                                        <h4 className={`text-sm font-bold mb-1 ${!notif.isRead ? 'text-slate-900' : 'text-slate-500'}`}>{notif.title}</h4>
-                                                                        <p className="text-xs text-slate-500 font-medium leading-relaxed mb-3">{notif.message}</p>
-                                                                        <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest block">
-                                                                            {notif.created_at ? formatDistanceToNow(new Date(notif.created_at), { addSuffix: true }) : 'Just now'}
-                                                                        </span>
+                                                        notifications.map((notif: any) => {
+                                                            const notifId = notif.notificationId || notif.id || Math.random();
+                                                            return (
+                                                                <div
+                                                                    key={notifId}
+                                                                    className={`p-6 border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer ${!notif.isRead ? 'bg-blue-50/30' : ''}`}
+                                                                    onClick={() => !notif.isRead && markAsRead(notif)}
+                                                                >
+                                                                    <div className="flex items-start gap-4">
+                                                                        <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${!notif.isRead ? 'bg-blue-600' : 'bg-slate-200'}`}></div>
+                                                                        <div className="flex-1">
+                                                                            <h4 className={`text-sm font-bold mb-1 ${!notif.isRead ? 'text-slate-900' : 'text-slate-500'}`}>{notif.title}</h4>
+                                                                            <p className="text-xs text-slate-500 font-medium leading-relaxed mb-3">{notif.message}</p>
+                                                                            <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest block">
+                                                                                {notif.created_at ? formatDistanceToNow(new Date(notif.created_at), { addSuffix: true }) : 'Just now'}
+                                                                            </span>
+                                                                        </div>
                                                                     </div>
                                                                 </div>
-                                                            </div>
-                                                        ))
+                                                            );
+                                                        })
                                                     ) : (
                                                         <div className="p-10 text-center">
                                                             <Bell size={32} className="mx-auto text-slate-200 mb-4" />
@@ -1225,56 +1330,102 @@ export default function DashboardPage() {
                                 <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
                                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200 max-h-[90vh] flex flex-col">
                                         <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                                            <h3 className="text-xl font-black tracking-tight text-slate-900">Application Details</h3>
+                                            <h3 className="text-xl font-black tracking-tight text-slate-900">Chi tiết đơn ứng tuyển</h3>
                                             <button
                                                 onClick={() => setViewingApplication(null)}
                                                 className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
                                             >
-                                                <ChevronLeft size={20} /> {/* Using ChevronLeft as close icon or imported X */}
+                                                <XCircle size={20} />
                                             </button>
                                         </div>
                                         <div className="p-8 overflow-y-auto space-y-6">
+                                            {/* Candidate Info */}
                                             <div className="flex items-center gap-4">
-                                                <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center font-black text-2xl text-blue-600">
-                                                    {viewingApplication.fullName?.charAt(0)}
+                                                <div className="w-16 h-16 rounded-full bg-blue-100 overflow-hidden flex-shrink-0">
+                                                    {viewingApplication.user?.avatarUrl
+                                                        ? <img src={viewingApplication.user.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                                                        : <div className="w-full h-full flex items-center justify-center font-black text-2xl text-blue-600">{viewingApplication.user?.fullName?.charAt(0) || '?'}</div>
+                                                    }
                                                 </div>
                                                 <div>
-                                                    <h2 className="text-2xl font-black text-slate-900">{viewingApplication.fullName}</h2>
-                                                    <p className="text-slate-500 font-medium">{viewingApplication.email}</p>
-                                                    <p className="text-slate-500 font-medium">{viewingApplication.phoneNumber}</p>
+                                                    <h2 className="text-2xl font-black text-slate-900">{viewingApplication.user?.fullName || 'N/A'}</h2>
+                                                    <p className="text-slate-500 font-medium">{viewingApplication.user?.email}</p>
+                                                    <p className="text-slate-500 font-medium">{viewingApplication.user?.phoneNumber}</p>
                                                 </div>
                                             </div>
 
+                                            {/* Job Info */}
+                                            {viewingApplication.jobPost && (
+                                                <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100">
+                                                    <span className="text-xs font-black text-blue-400 uppercase tracking-widest block mb-2">Vị trí ứng tuyển</span>
+                                                    <h4 className="font-black text-slate-900 text-lg">{viewingApplication.jobPost.title}</h4>
+                                                    <div className="flex flex-wrap gap-3 mt-2 text-sm text-slate-600">
+                                                        {viewingApplication.jobPost.location && (
+                                                            <span className="flex items-center gap-1">📍 {viewingApplication.jobPost.location.name}</span>
+                                                        )}
+                                                        <span className="flex items-center gap-1">💰 {Number(viewingApplication.jobPost.salaryMin || 0).toLocaleString('vi-VN')} - {Number(viewingApplication.jobPost.salaryMax || 0).toLocaleString('vi-VN')} VND</span>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Status & Date */}
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                                    <span className="text-xs font-black text-slate-400 uppercase tracking-widest block mb-1">Status</span>
-                                                    <span className="font-bold text-slate-900">{viewingApplication.status}</span>
+                                                    <span className="text-xs font-black text-slate-400 uppercase tracking-widest block mb-1">Trạng thái</span>
+                                                    <span className={`font-bold px-2 py-1 rounded-lg text-sm ${
+                                                        viewingApplication.status === 'Accepted' ? 'bg-green-100 text-green-700' :
+                                                        viewingApplication.status === 'Rejected' ? 'bg-red-100 text-red-700' :
+                                                        viewingApplication.status === 'Viewed' ? 'bg-blue-100 text-blue-700' :
+                                                        'bg-amber-100 text-amber-700'
+                                                    }`}>{viewingApplication.status}</span>
                                                 </div>
                                                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                                    <span className="text-xs font-black text-slate-400 uppercase tracking-widest block mb-1">Applied Date</span>
-                                                    <span className="font-bold text-slate-900">{new Date(viewingApplication.created_at).toLocaleDateString()}</span>
+                                                    <span className="text-xs font-black text-slate-400 uppercase tracking-widest block mb-1">Ngày ứng tuyển</span>
+                                                    <span className="font-bold text-slate-900">
+                                                        {viewingApplication.appliedAt
+                                                            ? new Date(viewingApplication.appliedAt).toLocaleDateString('vi-VN')
+                                                            : new Date(viewingApplication.created_at || Date.now()).toLocaleDateString('vi-VN')}
+                                                    </span>
                                                 </div>
                                             </div>
 
+                                            {/* Cover Letter */}
                                             <div>
-                                                <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-3">Cover Letter / Note</h4>
+                                                <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-3">Thư xin việc</h4>
                                                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-slate-600 font-medium text-sm leading-relaxed">
-                                                    {viewingApplication.note || 'No cover letter provided.'}
+                                                    {viewingApplication.coverLetter || viewingApplication.note || 'Không có thư xin việc.'}
                                                 </div>
                                             </div>
 
-                                            {viewingApplication.cvUrl && (
+                                            {/* Resume */}
+                                            {(viewingApplication.resume?.fileUrl || viewingApplication.cvUrl) && (
                                                 <div>
-                                                    <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-3">Resume (CV)</h4>
-                                                    <a
-                                                        href={viewingApplication.cvUrl}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="inline-flex items-center gap-2 px-5 py-3 bg-blue-50 text-blue-600 rounded-xl font-bold hover:bg-blue-100 transition-colors"
-                                                    >
-                                                        <FileText size={18} />
-                                                        View Resume PDF
-                                                    </a>
+                                                    <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-3">Hồ sơ CV</h4>
+                                                    <div className="flex flex-wrap items-center gap-3">
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                setPreviewCvUrl(viewingApplication.resume?.fileUrl || viewingApplication.cvUrl);
+                                                            }}
+                                                            className="inline-flex items-center gap-2 px-5 py-3 bg-blue-50 text-blue-600 rounded-xl font-bold hover:bg-blue-100 transition-colors shadow-sm"
+                                                            title="Xem trước ngay tại đây"
+                                                        >
+                                                            <Eye size={18} />
+                                                            Xem trước CV
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                const cvLink = viewingApplication.resume?.fileUrl || viewingApplication.cvUrl;
+                                                                const filename = viewingApplication.resume?.fileName || `CV_${viewingApplication.user?.fullName?.replace(/\s+/g, '_') || 'UngVien'}.pdf`;
+                                                                handleDownloadCV(cvLink, filename);
+                                                            }}
+                                                            className="inline-flex items-center gap-2 px-5 py-3 bg-indigo-50 text-indigo-600 rounded-xl font-bold hover:bg-indigo-100 transition-colors shadow-sm"
+                                                        >
+                                                            <Download size={18} />
+                                                            Tải file về máy
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>
@@ -1283,7 +1434,7 @@ export default function DashboardPage() {
                                                 onClick={() => handleUpdateApplicationStatus(viewingApplication.applicationId, 'Rejected')}
                                                 className="px-5 py-2.5 bg-white border border-slate-200 text-red-600 hover:bg-red-50 font-bold rounded-xl transition-all shadow-sm"
                                             >
-                                                Reject
+                                                Từ chối
                                             </button>
                                             <button
                                                 onClick={() => {
@@ -1293,14 +1444,52 @@ export default function DashboardPage() {
                                                 className="px-5 py-2.5 bg-amber-50 text-amber-600 hover:bg-amber-100 font-bold rounded-xl transition-all shadow-sm flex items-center gap-2"
                                             >
                                                 <Calendar size={18} />
-                                                Schedule Interview
+                                                Lên lịch phỏng vấn
                                             </button>
                                             <button
                                                 onClick={() => handleUpdateApplicationStatus(viewingApplication.applicationId, 'Accepted')}
                                                 className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-200 transition-all"
                                             >
-                                                Accept
+                                                Chấp nhận
                                             </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* CV Preview Modal */}
+                            {previewCvUrl && (
+                                <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[70] flex items-center justify-center p-4 sm:p-10">
+                                    <div className="bg-white rounded-3xl shadow-2xl w-full h-full max-w-5xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col">
+                                        <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                                            <h3 className="text-xl font-black tracking-tight text-slate-900 flex items-center gap-2">
+                                                <Eye className="text-blue-600" />
+                                                Xem trước CV
+                                            </h3>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => window.open(previewCvUrl, '_blank')}
+                                                    className="p-2 hover:bg-slate-200 rounded-lg text-slate-500 hover:text-slate-800 transition-colors text-sm font-bold flex items-center gap-2"
+                                                    title="Mở sang tab mới"
+                                                >
+                                                    Mở Tab Mới
+                                                </button>
+                                                <button
+                                                    onClick={() => setPreviewCvUrl(null)}
+                                                    className="p-2 hover:bg-red-100 rounded-lg text-slate-400 hover:text-red-500 transition-colors"
+                                                    title="Đóng modal"
+                                                >
+                                                    <XCircle size={24} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="flex-1 w-full bg-slate-100 relative">
+                                            {/* Dùng Google Docs Viewer để ép hiển thị tài liệu (kể cả khi Cloudinary trả về raw file bắt tải xuống) */}
+                                            <iframe
+                                                src={`https://docs.google.com/viewer?url=${encodeURIComponent(previewCvUrl)}&embedded=true`}
+                                                className="w-full h-full border-0 absolute inset-0"
+                                                title="CV Preview"
+                                            />
                                         </div>
                                     </div>
                                 </div>
@@ -1336,20 +1525,28 @@ export default function DashboardPage() {
                                                     <tr key={interview.interviewId} className="hover:bg-slate-50/50 transition-colors">
                                                         <td className="px-8 py-5">
                                                             <div className="flex flex-col">
-                                                                <span className="font-bold text-slate-900">{interview.application?.fullName || 'Candidate'}</span>
-                                                                <span className="text-xs text-slate-500 font-medium">{interview.title}</span>
+                                                                <span className="font-bold text-slate-900">
+                                                                    {interview.application?.user?.fullName || interview.application?.fullName || interview.candidateName || interview.fullName || `Candidate #${interview.applicationId || 'Unknown'}`}
+                                                                </span>
+                                                                <span className="text-xs text-slate-500 font-medium">{interview.title || interview.note || 'Interview'}</span>
                                                             </div>
                                                         </td>
                                                         <td className="px-8 py-5">
                                                             <div className="flex items-center gap-2 text-slate-600 font-medium">
                                                                 <Calendar size={14} className="text-blue-500" />
-                                                                {new Date(interview.startTime).toLocaleDateString()}
+                                                                {(() => {
+                                                                    const timeStr = interview.interview_time || interview.interviewAt || interview.startTime || interview.interviewTime || interview.date || interview.time || interview.created_at;
+                                                                    return timeStr ? new Date(timeStr).toLocaleDateString() : <span className="text-[10px] break-all">{JSON.stringify(Object.keys(interview))}</span>;
+                                                                })()}
                                                                 <Clock size={14} className="text-blue-500 ml-2" />
-                                                                {new Date(interview.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                {(() => {
+                                                                    const timeStr = interview.interview_time || interview.interviewAt || interview.startTime || interview.interviewTime || interview.date || interview.time || interview.created_at;
+                                                                    return timeStr ? new Date(timeStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                                                                })()}
                                                             </div>
                                                         </td>
                                                         <td className="px-8 py-5">
-                                                            {interview.meetingLink ? (
+                                                            {interview.type === 'Online' ? (
                                                                 <span className="flex items-center gap-2 text-blue-600 font-bold text-xs bg-blue-50 px-3 py-1 rounded-full w-fit">
                                                                     <Video size={12} />
                                                                     Online
@@ -1357,7 +1554,7 @@ export default function DashboardPage() {
                                                             ) : (
                                                                 <span className="flex items-center gap-2 text-slate-600 font-bold text-xs bg-slate-100 px-3 py-1 rounded-full w-fit">
                                                                     <MapPin size={12} />
-                                                                    In-person
+                                                                    Offline
                                                                 </span>
                                                             )}
                                                         </td>
@@ -1679,21 +1876,97 @@ export default function DashboardPage() {
                         </div>
 
                         <form onSubmit={handleJobSubmit} className="flex-1 overflow-y-auto p-10 pt-8">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Title - full width */}
                                 <div className="md:col-span-2">
                                     <label className="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-1 tracking-widest">Tiêu đề công việc *</label>
-                                    <input type="text" required value={jobFormData.title} onChange={e => setJobFormData({ ...jobFormData, title: e.target.value })} className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl py-4 px-6 focus:bg-white transition-all text-sm font-bold outline-none" />
+                                    <input type="text" required value={jobFormData.title} onChange={e => setJobFormData({ ...jobFormData, title: e.target.value })} placeholder="Ví dụ: Frontend Developer" className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl py-4 px-6 focus:bg-white focus:border-blue-200 transition-all text-sm font-bold outline-none" />
                                 </div>
+
+                                {/* Category */}
                                 <div>
                                     <label className="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-1 tracking-widest">Ngành nghề *</label>
-                                    <select required value={jobFormData.category_id} onChange={e => setJobFormData({ ...jobFormData, category_id: parseInt(e.target.value) })} className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl py-4 px-6 focus:bg-white outline-none">
+                                    <select required value={jobFormData.category_id} onChange={e => setJobFormData({ ...jobFormData, category_id: parseInt(e.target.value) })} className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl py-4 px-6 focus:bg-white focus:border-blue-200 outline-none text-sm">
                                         <option value={0}>Chọn ngành nghề</option>
                                         {categories.map(cat => <option key={cat.categoryId} value={cat.categoryId}>{cat.name}</option>)}
                                     </select>
                                 </div>
+
+                                {/* Location */}
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-1 tracking-widest">Địa điểm *</label>
+                                    <select required value={jobFormData.location_id} onChange={e => setJobFormData({ ...jobFormData, location_id: parseInt(e.target.value) })} className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl py-4 px-6 focus:bg-white focus:border-blue-200 outline-none text-sm">
+                                        <option value={0}>Chọn địa điểm</option>
+                                        {locations.map((loc: any) => <option key={loc.locationId} value={loc.locationId}>{loc.name}</option>)}
+                                    </select>
+                                </div>
+
+                                {/* Level */}
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-1 tracking-widest">Cấp bậc *</label>
+                                    <select required value={jobFormData.level_id} onChange={e => setJobFormData({ ...jobFormData, level_id: parseInt(e.target.value) })} className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl py-4 px-6 focus:bg-white focus:border-blue-200 outline-none text-sm">
+                                        <option value={0}>Chọn cấp bậc</option>
+                                        {levels.map((lv: any) => <option key={lv.levelId} value={lv.levelId}>{lv.name}</option>)}
+                                    </select>
+                                </div>
+
+                                {/* Job Type */}
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-1 tracking-widest">Hình thức làm việc *</label>
+                                    <select required value={jobFormData.job_type} onChange={e => setJobFormData({ ...jobFormData, job_type: e.target.value })} className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl py-4 px-6 focus:bg-white focus:border-blue-200 outline-none text-sm">
+                                        <option value="fulltime">Toàn thời gian (Full-time)</option>
+                                        <option value="parttime">Bán thời gian (Part-time)</option>
+                                        <option value="remote">Làm từ xa (Remote)</option>
+                                        <option value="hybrid">Kết hợp (Hybrid)</option>
+                                        <option value="internship">Thực tập (Internship)</option>
+                                        <option value="freelance">Freelance</option>
+                                    </select>
+                                </div>
+
+                                {/* Salary Min */}
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-1 tracking-widest">Mức lương tối thiểu (VND)</label>
+                                    <input type="number" min={0} value={jobFormData.salary_min} onChange={e => setJobFormData({ ...jobFormData, salary_min: parseInt(e.target.value) || 0 })} placeholder="Ví dụ: 10000000" className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl py-4 px-6 focus:bg-white focus:border-blue-200 transition-all text-sm outline-none" />
+                                </div>
+
+                                {/* Salary Max */}
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-1 tracking-widest">Mức lương tối đa (VND)</label>
+                                    <input type="number" min={0} value={jobFormData.salary_max} onChange={e => setJobFormData({ ...jobFormData, salary_max: parseInt(e.target.value) || 0 })} placeholder="Ví dụ: 25000000" className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl py-4 px-6 focus:bg-white focus:border-blue-200 transition-all text-sm outline-none" />
+                                </div>
+
+                                {/* Experience Required */}
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-1 tracking-widest">Kinh nghiệm yêu cầu *</label>
+                                    <select required value={jobFormData.experience_required} onChange={e => setJobFormData({ ...jobFormData, experience_required: e.target.value })} className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl py-4 px-6 focus:bg-white focus:border-blue-200 outline-none text-sm">
+                                        <option value="">Chọn kinh nghiệm</option>
+                                        <option value="Không yêu cầu">Không yêu cầu</option>
+                                        <option value="Dưới 1 năm">Dưới 1 năm</option>
+                                        <option value="1 năm">1 năm</option>
+                                        <option value="2 năm">2 năm</option>
+                                        <option value="3 năm">3 năm</option>
+                                        <option value="4 năm">4 năm</option>
+                                        <option value="5 năm">5 năm</option>
+                                        <option value="Trên 5 năm">Trên 5 năm</option>
+                                    </select>
+                                </div>
+
+                                {/* Quantity */}
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-1 tracking-widest">Số lượng tuyển *</label>
+                                    <input type="number" required min={1} value={jobFormData.quantity} onChange={e => setJobFormData({ ...jobFormData, quantity: parseInt(e.target.value) || 1 })} className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl py-4 px-6 focus:bg-white focus:border-blue-200 transition-all text-sm outline-none" />
+                                </div>
+
+                                {/* Description - full width */}
                                 <div className="md:col-span-2">
                                     <label className="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-1 tracking-widest">Mô tả công việc *</label>
-                                    <textarea required value={jobFormData.description} onChange={e => setJobFormData({ ...jobFormData, description: e.target.value })} rows={5} className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl py-5 px-6 focus:bg-white transition-all outline-none resize-none leading-relaxed" />
+                                    <textarea required value={jobFormData.description} onChange={e => setJobFormData({ ...jobFormData, description: e.target.value })} rows={4} placeholder="Mô tả chi tiết công việc, nhiệm vụ và trách nhiệm..." className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl py-5 px-6 focus:bg-white focus:border-blue-200 transition-all outline-none resize-none leading-relaxed text-sm" />
+                                </div>
+
+                                {/* Requirements - full width */}
+                                <div className="md:col-span-2">
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase mb-3 ml-1 tracking-widest">Yêu cầu ứng viên *</label>
+                                    <textarea required value={jobFormData.requirements} onChange={e => setJobFormData({ ...jobFormData, requirements: e.target.value })} rows={4} placeholder="Các kỹ năng, kiến thức và yêu cầu cụ thể đối với ứng viên..." className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl py-5 px-6 focus:bg-white focus:border-blue-200 transition-all outline-none resize-none leading-relaxed text-sm" />
                                 </div>
                             </div>
                             <div className="flex gap-4 mt-12 pt-10 border-t border-slate-100">
@@ -1738,6 +2011,18 @@ export default function DashboardPage() {
                                     </div>
                                 </div>
                                 <div>
+                                    <label className="block text-xs font-black text-slate-400 uppercase mb-2 tracking-widest">Interview Type</label>
+                                    <select
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-2 focus:ring-blue-500/20 font-bold text-slate-700"
+                                        value={interviewFormData.type}
+                                        onChange={e => setInterviewFormData({ ...interviewFormData, type: e.target.value })}
+                                        required
+                                    >
+                                        <option value="Online">Online</option>
+                                        <option value="Offline">Offline</option>
+                                    </select>
+                                </div>
+                                <div>
                                     <label className="block text-xs font-black text-slate-400 uppercase mb-2 tracking-widest">Location (or Online Link)</label>
                                     <input
                                         type="text"
@@ -1745,18 +2030,21 @@ export default function DashboardPage() {
                                         className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-2 focus:ring-blue-500/20 font-medium text-slate-700"
                                         value={interviewFormData.location}
                                         onChange={e => setInterviewFormData({ ...interviewFormData, location: e.target.value })}
+                                        required
                                     />
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-black text-slate-400 uppercase mb-2 tracking-widest">Meeting Link (Optional)</label>
-                                    <input
-                                        type="url"
-                                        placeholder="https://zoom.us/..."
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-2 focus:ring-blue-500/20 font-medium text-slate-700"
-                                        value={interviewFormData.meetingLink}
-                                        onChange={e => setInterviewFormData({ ...interviewFormData, meetingLink: e.target.value })}
-                                    />
-                                </div>
+                                {interviewFormData.type === 'Online' && (
+                                    <div>
+                                        <label className="block text-xs font-black text-slate-400 uppercase mb-2 tracking-widest">Meeting Link (Optional)</label>
+                                        <input
+                                            type="url"
+                                            placeholder="https://zoom.us/..."
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none focus:ring-2 focus:ring-blue-500/20 font-medium text-slate-700"
+                                            value={interviewFormData.meetingLink}
+                                            onChange={e => setInterviewFormData({ ...interviewFormData, meetingLink: e.target.value })}
+                                        />
+                                    </div>
+                                )}
                                 <div>
                                     <label className="block text-xs font-black text-slate-400 uppercase mb-2 tracking-widest">Notes</label>
                                     <textarea
