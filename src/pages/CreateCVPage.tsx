@@ -427,11 +427,7 @@ const CreateCVPage: React.FC = () => {
           <MainCanvas />
         </main>
 
-        <PreviewModal 
-          isOpen={isPreviewOpen} 
-          onClose={() => setIsPreviewOpen(false)} 
-          htmlContent={previewHtml} 
-        />
+
       </div>
     </div>
   );
