@@ -426,6 +426,12 @@ const CreateCVPage: React.FC = () => {
           {/* Component Bản nháp CV thật để user soi (sẽ chiếm trọn không gian còn lại) */}
           <MainCanvas />
         </main>
+
+        <PreviewModal 
+          isOpen={isPreviewOpen} 
+          onClose={() => setIsPreviewOpen(false)} 
+          htmlContent={previewHtml} 
+        />
       </div>
     </div>
   );

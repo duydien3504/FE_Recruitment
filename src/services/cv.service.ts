@@ -5,6 +5,7 @@ import {
   LEGACY_CV_TEMPLATE_IDS
 } from '../constants/cvTemplateDefaults';
 import { getAccessToken } from '../utils/auth';
+import type { GetTemplatesResponse, CvTemplate } from '../types/cv.types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
@@ -229,6 +230,12 @@ export const CvService = {
     const response = await apiClient.post('/cv-builder/export', p, {
       responseType: 'blob'
     });
+    return response.data;
+  },
+
+  // Lấy HTML xem trước (POST /api/v1/cv-builder/preview)
+  getPreviewHtml: async (payload: any): Promise<string> => {
+    const response = await apiClient.post('/cv-builder/preview', payload);
     return response.data;
   }
 };

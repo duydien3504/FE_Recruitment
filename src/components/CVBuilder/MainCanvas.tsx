@@ -7,8 +7,76 @@ import { SortableCVBlock } from './SortableCVBlock';
 import { AiAssistantModal } from './AiAssistantModal';
 import { TiptapEditor } from './TiptapEditor';
 
+// ─── Layout Presets theo templateId ──────────────────────────────────────────
+// Mỗi template có bộ thuộc tính visual riêng — không chỉ màu mà còn cả bố cục.
+interface TemplateLayoutPreset {
+  /** Kiểu bố cục tổng thể */
+  layoutStyle: 'standard' | 'hero-top' | 'right-sidebar';
+  /** Màu nền sidebar */
+  sidebarBg: string;
+  /** Độ rộng sidebar (mm) */
+  sidebarWidth: string;
+  /** Màu nền cột chính */
+  mainBg: string;
+  /** Padding cột chính */
+  mainPadding: string;
+  /** Style tiêu đề section */
+  sectionHeaderStyle: 'modern' | 'hero' | 'pill' | 'none' | 'icon-circle' | 'underline';
+}
+
+const TEMPLATE_LAYOUT_PRESETS: Record<string, TemplateLayoutPreset> = {
+  // IT — Dark terminal/GitHub style
+  'modern_it_01': {
+    layoutStyle: 'standard',
+    sidebarBg: '#161b22',
+    sidebarWidth: '95mm',
+    mainBg: '#ffffff',
+    mainPadding: 'p-10',
+    sectionHeaderStyle: 'underline',
+  },
+  // Marketing — Hero banner style (Thumbnail có banner vàng ở đầu)
+  'creative_marketing_01': {
+    layoutStyle: 'hero-top',
+    sidebarBg: '#fffbf0',
+    sidebarWidth: '85mm',
+    mainBg: '#ffffff',
+    mainPadding: 'p-8',
+    sectionHeaderStyle: 'hero',
+  },
+  // Business — Right sidebar style
+  'elegant_business_01': {
+    layoutStyle: 'right-sidebar',
+    sidebarBg: '#f8fafc',
+    sidebarWidth: '90mm',
+    mainBg: '#ffffff',
+    mainPadding: 'p-10',
+    sectionHeaderStyle: 'pill',
+  },
+  // Social — Warm friendly pastel
+  'minimal_it_02': {
+    layoutStyle: 'standard',
+    sidebarBg: '#faf5ff',
+    sidebarWidth: '85mm',
+    mainBg: '#ffffff',
+    mainPadding: 'p-10',
+    sectionHeaderStyle: 'pill',
+  },
+};
+
+const DEFAULT_PRESET: TemplateLayoutPreset = {
+  layoutStyle: 'standard',
+  sidebarBg: '#2d3e50',
+  sidebarWidth: '95mm',
+  mainBg: '#ffffff',
+  mainPadding: 'p-12',
+  sectionHeaderStyle: 'icon-circle',
+};
+
 const MainCanvas: React.FC = () => {
-  const { cvData, updateSection, themeConfig, columnLayout, setColumnLayout } = useCvStore();
+  const { cvData, updateSection, themeConfig, columnLayout, setColumnLayout, templateId } = useCvStore();
+  
+  // Resolve layout preset dựa theo templateId hiện tại
+  const preset: TemplateLayoutPreset = TEMPLATE_LAYOUT_PRESETS[templateId] ?? DEFAULT_PRESET;
   const [zoom, setZoom] = React.useState(100);
 
   const [aiModalConfig, setAiModalConfig] = React.useState({
@@ -236,30 +304,93 @@ const MainCanvas: React.FC = () => {
 
     // Dynamic Sections (Education, Experience, etc.)
     const items = cvData[sectionId] || [];
-    const textColor = isDark ? 'text-white' : 'text-gray-800';
-    const subTextColor = isDark ? 'text-gray-300' : 'text-gray-500';
+    // Sidebar sáng (Marketing/IT Minimal) dùng chữ đen
+    const isSidebarLight = preset.sidebarBg.startsWith('#e') || preset.sidebarBg.startsWith('#f');
+    const textColor = isDark ? (isSidebarLight ? 'text-gray-800' : 'text-white') : 'text-gray-800';
+    const subTextColor = isDark ? (isSidebarLight ? 'text-gray-500' : 'text-gray-300') : 'text-gray-500';
+
+    // ─── Section Header theo preset.sectionHeaderStyle ───────────────────────
+    const renderSectionHeader = () => {
+      const labelValue = cvData.customLabels?.[sectionId] || config.label;
+      const onLabelChange = (val: string) => {
+        const customLabels = cvData.customLabels || {};
+        updateSection('customLabels', { ...customLabels, [sectionId]: val });
+      };
+
+      if (isDark) {
+        // Sidebar luôn dùng style compact chữ nhỏ
+        return (
+          <div className="flex items-center space-x-4 mb-4">
+            <TiptapEditor
+              value={labelValue}
+              onChange={onLabelChange}
+              editorClassName={`text-[10px] font-bold uppercase tracking-[2px] border-b pb-1 w-full ${
+                isSidebarLight ? 'border-gray-300 text-gray-700' : 'border-white/10'
+              }`}
+              className="min-h-0 flex-1"
+              style={{ color: themeConfig.primaryColor }}
+            />
+          </div>
+        );
+      }
+
+      // Cột phải — render theo sectionHeaderStyle
+      switch (preset.sectionHeaderStyle) {
+        case 'hero':
+          return (
+            <div className="flex items-center mb-6 pl-4 border-l-4" style={{ borderColor: themeConfig.primaryColor }}>
+              <TiptapEditor
+                value={labelValue}
+                onChange={onLabelChange}
+                editorClassName="text-xl font-black uppercase tracking-[3px] text-slate-800"
+                className="min-h-0 flex-1"
+              />
+            </div>
+          );
+        case 'underline':
+          return (
+            <div className="flex items-center mb-4 border-b-2 pb-2" style={{ borderColor: themeConfig.primaryColor }}>
+               <span className="text-primary font-mono mr-2">//</span>
+               <TiptapEditor
+                value={labelValue}
+                onChange={onLabelChange}
+                editorClassName="text-base font-bold uppercase tracking-wider text-slate-700 font-mono"
+                className="min-h-0 flex-1"
+              />
+            </div>
+          );
+        case 'pill':
+          return (
+            <div className="flex items-center mb-6">
+              <div className="px-4 py-1.5 rounded-lg text-white text-xs font-bold mr-4 shadow-sm" style={{ backgroundColor: themeConfig.primaryColor }}>
+                {(cvData.customLabels?.[sectionId] || config.label).toUpperCase()}
+              </div>
+              <div className="flex-1 h-px bg-slate-200" />
+            </div>
+          );
+        default: // 'icon-circle'
+          return (
+            <div className="flex items-center space-x-4 mb-6">
+              {config.icon && (
+                <div className="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center text-white shadow-md rotate-3 group-hover:rotate-0 transition-transform" style={{ backgroundColor: themeConfig.primaryColor }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">{config.icon}</svg>
+                </div>
+              )}
+              <TiptapEditor
+                value={labelValue}
+                onChange={onLabelChange}
+                editorClassName="text-xl font-extrabold uppercase tracking-tight text-slate-800"
+                className="min-h-0 flex-1"
+              />
+            </div>
+          );
+      }
+    };
 
     return (
       <SortableCVBlock key={sectionId} id={sectionId}>
         <section className={isDark ? 'mb-4' : 'mb-0'}>
-          <div className="flex items-center space-x-4 mb-4">
-            {!isDark && (
-              <div className="w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-white" style={{ backgroundColor: themeConfig.primaryColor }}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{config.icon}</svg>
-              </div>
-            )}
-            <TiptapEditor 
-              value={cvData.customLabels?.[sectionId] || config.label}
-              onChange={(val) => {
-                const customLabels = cvData.customLabels || {};
-                updateSection('customLabels', { ...customLabels, [sectionId]: val });
-              }}
-              editorClassName={`${isDark ? 'text-[10px] border-b border-white/10 pb-1' : 'text-lg'} font-bold uppercase tracking-wider ${isDark ? 'w-full' : ''}`}
-              className="min-h-0 flex-1"
-              style={{ color: isDark ? themeConfig.primaryColor : '#2d3748' }}
-            />
-          </div>
-
+          {renderSectionHeader()}
           <SortableContext items={items.map((i: any) => i.id)} strategy={verticalListSortingStrategy}>
             {items.map((item: any) => (
               <div key={item.id} className={`mb-4 group relative ${isDark ? '' : 'p-3 hover:bg-gray-50 rounded-xl transition-all border border-transparent hover:border-gray-100'}`}>
@@ -347,24 +478,62 @@ const MainCanvas: React.FC = () => {
             onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
           >
-            <div className="flex min-h-[297mm]">
-               {/* Cột Trái (Dark Sidebar) */}
-               <div 
-                 className="w-[95mm] flex-shrink-0 text-white p-6"
-                 style={{ backgroundColor: '#2d3e50' }}
-               >
-                  <SortableContext items={columnLayout.left} strategy={verticalListSortingStrategy}>
-                     {columnLayout.left.map((sectionId) => renderSection(sectionId, true))}
-                     {columnLayout.left.length === 0 && <div className="h-40 border-2 border-dashed border-white/10 rounded-xl flex items-center justify-center text-white/20 text-xs text-center border-spacing-4">Kéo nội dung vào đây</div>}
-                  </SortableContext>
-               </div>
+            <div className={`flex flex-col min-h-[297mm]`}>
+               
+               {/* 1. HERO TOP SECTION (Chỉ hiện nếu layoutStyle là hero-top) */}
+               {preset.layoutStyle === 'hero-top' && (
+                 <div className="w-full p-10 flex items-center space-x-10" style={{ backgroundColor: themeConfig.primaryColor }}>
+                    <div className="w-40 h-40 shrink-0 rounded-full border-8 border-white/20 overflow-hidden bg-white/10 flex items-center justify-center">
+                       {cvData.personal?.avatarUrl ? (
+                           <img src={cvData.personal.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                       ) : (
+                           <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                       )}
+                    </div>
+                    <div className="flex-1">
+                       <TiptapEditor 
+                          value={cvData.personal?.fullName || ''} 
+                          onChange={(val) => updateSection('personal', { ...cvData.personal, fullName: val })}
+                          editorClassName="text-5xl font-black uppercase text-white tracking-widest"
+                          className="min-h-0"
+                       />
+                       <TiptapEditor 
+                          value={cvData.personal?.title || ''} 
+                          onChange={(val) => updateSection('personal', { ...cvData.personal, title: val })}
+                          editorClassName="text-xl font-medium text-white/80 mt-2 uppercase tracking-[4px]"
+                          className="min-h-0"
+                       />
+                    </div>
+                 </div>
+               )}
 
-               {/* Cột Phải (Main Content) */}
-               <div className="flex-1 p-12 space-y-10 bg-white">
-                  <SortableContext items={columnLayout.right} strategy={verticalListSortingStrategy}>
-                     {columnLayout.right.map((sectionId) => renderSection(sectionId, false))}
-                     {columnLayout.right.length === 0 && <div className="h-40 border-2 border-dashed border-gray-100 rounded-xl flex items-center justify-center text-gray-300 text-xs text-center border-spacing-4">Kéo nội dung vào đây<br/>để hiển thị ở cột chính</div>}
-                  </SortableContext>
+               <div className={`flex flex-1 ${preset.layoutStyle === 'right-sidebar' ? 'flex-row-reverse' : 'flex-row'}`}>
+                  {/* SIDEBAR COL */}
+                  <div 
+                    className="flex-shrink-0 p-8 transition-colors duration-500"
+                    style={{ 
+                      backgroundColor: preset.sidebarBg,
+                      width: preset.sidebarWidth,
+                      color: (preset.sidebarBg.startsWith('#e') || preset.sidebarBg.startsWith('#f')) ? '#1a1a1a' : '#ffffff'
+                    }}
+                  >
+                     <SortableContext items={columnLayout.left} strategy={verticalListSortingStrategy}>
+                        {columnLayout.left.map((sectionId) => {
+                          // Nếu ở mode Hero-top, bỏ qua block Profile vì đã render ở banner
+                          if (preset.layoutStyle === 'hero-top' && sectionId === 'profile') return null;
+                          return renderSection(sectionId, true);
+                        })}
+                        {columnLayout.left.length === 0 && <div className="h-40 border-2 border-dashed border-white/10 rounded-xl flex items-center justify-center text-white/20 text-xs text-center border-spacing-4">Cột Sidebar</div>}
+                     </SortableContext>
+                  </div>
+
+                  {/* MAIN CONTENT COL */}
+                  <div className={`flex-1 ${preset.mainPadding} space-y-10 transition-colors duration-500`} style={{ backgroundColor: preset.mainBg }}>
+                     <SortableContext items={columnLayout.right} strategy={verticalListSortingStrategy}>
+                        {columnLayout.right.map((sectionId) => renderSection(sectionId, false))}
+                        {columnLayout.right.length === 0 && <div className="h-40 border-2 border-dashed border-gray-100 rounded-xl flex items-center justify-center text-gray-300 text-xs text-center border-spacing-4">Cột Chính Nội Dung</div>}
+                     </SortableContext>
+                  </div>
                </div>
             </div>
           </DndContext>
