@@ -477,7 +477,16 @@ export default function AdminDashboardPage() {
             const response = await fetchWithAuth(`${apiUrl}/api/v1/admin/jobs?${queryParams.toString()}`);
             if (response.ok) {
                 const json = await response.json();
-                setJobs(json.data || []);
+                // Handle both: {data: [...]} and {data: {content: [...]}} response shapes
+                const rawData = json.data;
+                const jobsArray = Array.isArray(rawData)
+                    ? rawData
+                    : Array.isArray(rawData?.content)
+                    ? rawData.content
+                    : Array.isArray(rawData?.data)
+                    ? rawData.data
+                    : [];
+                setJobs(jobsArray);
             }
         } catch (err) {
             console.error('Error fetching admin jobs:', err);

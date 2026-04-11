@@ -77,7 +77,10 @@ export default function MyCompanyPage() {
         location_id: 0,
         level_id: 0,
         salary_min: 0,
-        salary_max: 0
+        salary_max: 0,
+        job_type: 'fulltime',
+        experience_required: '',
+        quantity: 1
     });
 
     const [categories, setCategories] = useState<Category[]>([]);
@@ -225,10 +228,29 @@ export default function MyCompanyPage() {
             if (!postJobData.category_id || !postJobData.location_id || !postJobData.level_id) {
                 throw new Error('Vui lòng chọn đầy đủ danh mục, địa điểm và cấp bậc');
             }
+            if (!postJobData.experience_required) {
+                throw new Error('Vui lòng chọn kinh nghiệm yêu cầu');
+            }
+
+            const payload = {
+                title: postJobData.title,
+                description: postJobData.description,
+                requirements: postJobData.requirements,
+                category_id: postJobData.category_id,
+                location_id: postJobData.location_id,
+                level_id: postJobData.level_id,
+                salary_min: postJobData.salary_min,
+                salary_max: postJobData.salary_max,
+                job_type: postJobData.job_type,
+                experience_required: postJobData.experience_required,
+                quantity: postJobData.quantity
+            };
+
+            console.log('Submitting job payload:', payload);
 
             const response = await fetchWithAuth(`${apiUrl}/api/v1/jobs`, {
                 method: 'POST',
-                body: JSON.stringify(postJobData)
+                body: JSON.stringify(payload)
             });
 
             if (response.ok) {
@@ -263,8 +285,9 @@ export default function MyCompanyPage() {
                     fetchCompanyData();
                 }
             } else {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Đăng tin thất bại');
+                const errorData = await response.json().catch(() => ({}));
+                console.error('Post job error response:', errorData);
+                throw new Error(errorData.message || `Lỗi ${response.status}: Đăng tin thất bại`);
             }
         } catch (err: any) {
             alert(err.message);
@@ -810,6 +833,56 @@ export default function MyCompanyPage() {
                                         <option key={loc.locationId} value={loc.locationId}>{loc.name}</option>
                                     ))}
                                 </select>
+                            </div>
+
+
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">Hình thức làm việc <span className="text-red-500">*</span></label>
+                                <select
+                                    required
+                                    value={postJobData.job_type}
+                                    onChange={e => setPostJobData({ ...postJobData, job_type: e.target.value })}
+                                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none transition-all appearance-none bg-white"
+                                >
+                                    <option value="fulltime">Toàn thời gian (Full-time)</option>
+                                    <option value="parttime">Bán thời gian (Part-time)</option>
+                                    <option value="remote">Làm từ xa (Remote)</option>
+                                    <option value="hybrid">Kết hợp (Hybrid)</option>
+                                    <option value="internship">Thực tập (Internship)</option>
+                                    <option value="freelance">Freelance</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">Kinh nghiệm yêu cầu <span className="text-red-500">*</span></label>
+                                <select
+                                    required
+                                    value={postJobData.experience_required}
+                                    onChange={e => setPostJobData({ ...postJobData, experience_required: e.target.value })}
+                                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none transition-all appearance-none bg-white"
+                                >
+                                    <option value="">-- Chọn kinh nghiệm --</option>
+                                    <option value="Không yêu cầu">Không yêu cầu</option>
+                                    <option value="Dưới 1 năm">Dưới 1 năm</option>
+                                    <option value="1 năm">1 năm</option>
+                                    <option value="2 năm">2 năm</option>
+                                    <option value="3 năm">3 năm</option>
+                                    <option value="4 năm">4 năm</option>
+                                    <option value="5 năm">5 năm</option>
+                                    <option value="Trên 5 năm">Trên 5 năm</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">Số lượng tuyển <span className="text-red-500">*</span></label>
+                                <input
+                                    type="number"
+                                    required
+                                    min="1"
+                                    value={postJobData.quantity}
+                                    onChange={e => setPostJobData({ ...postJobData, quantity: parseInt(e.target.value) || 1 })}
+                                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                                />
                             </div>
 
                             <div className="md:col-span-2">
