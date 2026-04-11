@@ -15,6 +15,7 @@ import SavedJobsPage from './pages/SavedJobsPage';
 import ResumesPage from './pages/ResumesPage';
 import ApplicationsPage from './pages/ApplicationsPage';
 import DashboardPage from './pages/DashboardPage';
+import CreateCVPage from './pages/CreateCVPage';
 import { Toaster } from 'sonner';
 
 function App() {
@@ -38,6 +39,7 @@ function App() {
         <Route path="/saved-jobs" element={<SavedJobsPage />} />
         <Route path="/resumes" element={<ResumesPage />} />
         <Route path="/applications" element={<ApplicationsPage />} />
+        <Route path="/create-cv" element={<CreateCVPage />} />
       </Routes>
     </Router>
   );

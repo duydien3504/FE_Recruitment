@@ -94,17 +94,18 @@ export default function Header() {
                 <div className="flex justify-between items-center h-20">
                     {/* Logo */}
                     <div className="flex-shrink-0 flex items-center">
-                        <Link to="/" className="text-2xl font-bold text-charcoal tracking-tighter">
+                        <Link to="/" className="text-2xl font-black text-slate-800 tracking-tighter flex items-center">
+                            <div className="w-8 h-8 bg-primary rounded-lg mr-2 flex items-center justify-center text-white text-xs">SR</div>
                             Stitch<span className="text-primary">Recruit</span>
                         </Link>
                     </div>
 
                     {/* Desktop Navigation */}
-                    <nav className="hidden md:flex space-x-8">
-                        <Link to="/jobs" className="text-charcoal hover:text-primary font-medium transition-colors">Việc làm</Link>
-                        <Link to="/companies" className="text-charcoal hover:text-primary font-medium transition-colors">Công ty</Link>
-                        <Link to="/resumes" className="text-charcoal hover:text-primary font-medium transition-colors">Hồ sơ & CV</Link>
-                        <a href="#" className="text-charcoal hover:text-primary font-medium transition-colors">Blog</a>
+                    <nav className="hidden md:flex space-x-6 items-center">
+                        <Link to="/jobs" className="text-slate-600 hover:text-primary font-semibold text-sm transition-colors flex items-center">Việc làm <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg></Link>
+                        <Link to="/resumes" className="text-slate-600 hover:text-primary font-semibold text-sm transition-colors flex items-center">Quản lý CV <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg></Link>
+                        <Link to="/create-cv" className="text-slate-600 hover:text-primary font-semibold text-sm transition-colors flex items-center">Tạo CV <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg></Link>
+                        <Link to="/companies" className="text-slate-600 hover:text-primary font-semibold text-sm transition-colors">Công ty</Link>
                     </nav>
 
                     {/* Desktop CTA / User Menu */}
@@ -185,6 +186,7 @@ export default function Header() {
                         <Link to="/jobs" className="block px-3 py-2 text-base font-medium text-charcoal hover:text-primary hover:bg-gray-50 rounded-md">Việc làm</Link>
                         <Link to="/companies" className="block px-3 py-2 text-base font-medium text-charcoal hover:text-primary hover:bg-gray-50 rounded-md">Công ty</Link>
                         <Link to="/resumes" className="block px-3 py-2 text-base font-medium text-charcoal hover:text-primary hover:bg-gray-50 rounded-md">Hồ sơ & CV</Link>
+                        <Link to="/create-cv" className="block px-3 py-2 text-base font-medium text-charcoal hover:text-primary hover:bg-gray-50 rounded-md">Tạo CV</Link>
                         <a href="#" className="block px-3 py-2 text-base font-medium text-charcoal hover:text-primary hover:bg-gray-50 rounded-md">Blog</a>
 
                         <div className="pt-4 border-t border-gray-100 flex flex-col space-y-3">

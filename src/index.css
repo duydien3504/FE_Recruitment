@@ -24,3 +24,68 @@ body {
   min-width: 320px;
   min-height: 100vh;
 }
+
+/* Hỗ trợ TopCV Preview & Interactive */
+.cv-quill-editor-dark .ProseMirror {
+  color: #fff;
+  opacity: 0.8;
+  font-size: 11px;
+  outline: none;
+  min-height: 40px;
+}
+.cv-quill-editor-dark .ProseMirror p { margin-bottom: 2px; }
+
+.ProseMirror {
+  outline: none !important;
+  min-height: 20px;
+}
+
+.ProseMirror ul {
+  list-style-type: disc !important;
+  padding-left: 1.25rem !important;
+}
+
+.ProseMirror li {
+  margin-bottom: 0.25rem !important;
+}
+
+/* Hiệu ứng focus cho các input trong CV */
+#cv-paper input:focus, #cv-paper textarea:focus {
+  background-color: rgba(0, 0, 0, 0.03);
+  border-radius: 4px;
+}
+
+.cv-quill-editor-dark .ProseMirror:focus {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+/* Tùy chỉnh thanh cuộn Sidebar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #cbd5e1;
+}
+
+.bg-conic-gradient {
+  background: conic-gradient(from 0deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
+}
+
+/* Tiptap Placeholder Style */
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #adb5bd;
+  pointer-events: none;
+  height: 0;
+  font-style: italic;
+}
+
