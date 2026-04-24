@@ -165,6 +165,14 @@ const MainCanvas: React.FC = () => {
     }
   };
 
+  const handleRemoveSection = (sectionId: string) => {
+    const newLayout = {
+      left: columnLayout.left.filter(id => id !== sectionId),
+      right: columnLayout.right.filter(id => id !== sectionId)
+    };
+    setColumnLayout(newLayout);
+  };
+
   const updateItem = (id: string, section: string, field: string, value: string) => {
      const list = Array.from(cvData[section] || []);
      const newList = list.map((item: any) => 
@@ -197,7 +205,7 @@ const MainCanvas: React.FC = () => {
 
     if (sectionId === 'profile') {
       return (
-        <SortableCVBlock key="profile" id="profile" noDelete>
+        <SortableCVBlock key="profile" id="profile">
           <div className="text-center group/avatar mb-4">
             <div className="w-40 h-40 mx-auto rounded-full border-4 border-white/20 overflow-hidden mb-4 bg-gray-100 flex items-center justify-center relative">
               {cvData.personal?.avatarUrl ? (
@@ -225,7 +233,7 @@ const MainCanvas: React.FC = () => {
 
     if (sectionId === 'contact') {
       return (
-        <SortableCVBlock key="contact" id="contact" noDelete>
+        <SortableCVBlock key="contact" id="contact" onRemove={handleRemoveSection}>
           <div className="mb-4">
             <h4 className="text-[10px] font-bold uppercase tracking-[2px] border-b border-white/10 pb-1 mb-3" style={{ color: themeConfig.primaryColor }}>LIÊN HỆ</h4>
             <div className="space-y-2">
@@ -272,7 +280,7 @@ const MainCanvas: React.FC = () => {
 
     if (sectionId === 'about') {
       return (
-        <SortableCVBlock key="about" id="about" noDelete>
+        <SortableCVBlock key="about" id="about" onRemove={handleRemoveSection}>
           <div className="mb-4">
             <h4 className="text-[10px] font-bold uppercase tracking-[2px] border-b border-white/10 pb-1 mb-3" style={{ color: themeConfig.primaryColor }}>MỤC TIÊU NGHỀ NGHIỆP</h4>
             <TiptapEditor 
@@ -288,7 +296,7 @@ const MainCanvas: React.FC = () => {
 
     if (sectionId === 'skills') {
       return (
-        <SortableCVBlock key="skills" id="skills" noDelete>
+        <SortableCVBlock key="skills" id="skills" onRemove={handleRemoveSection}>
           <div className="mb-4">
             <h4 className="text-[10px] font-bold uppercase tracking-[2px] border-b border-white/10 pb-1 mb-3" style={{ color: themeConfig.primaryColor }}>KỸ NĂNG</h4>
             <TiptapEditor 
@@ -388,7 +396,7 @@ const MainCanvas: React.FC = () => {
     };
 
     return (
-      <SortableCVBlock key={sectionId} id={sectionId}>
+      <SortableCVBlock key={sectionId} id={sectionId} onRemove={handleRemoveSection}>
         <section className={isDark ? 'mb-4' : 'mb-0'}>
           {renderSectionHeader()}
           <SortableContext items={items.map((i: any) => i.id)} strategy={verticalListSortingStrategy}>
