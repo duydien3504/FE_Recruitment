@@ -5,7 +5,6 @@ import {
   LEGACY_CV_TEMPLATE_IDS
 } from '../constants/cvTemplateDefaults';
 import { getAccessToken } from '../utils/auth';
-import type { GetTemplatesResponse, CvTemplate } from '../types/cv.types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
@@ -142,7 +141,7 @@ export function formatCvApiError(err: unknown): string {
     if (m != null) {
       if (typeof m === 'string') {
         const text = flattenNestedMessage(m);
-        if (text.includes('fk_cv_builders_template_id')) {
+        if (text.includes('cv_builders.template_id')) {
           return 'templateId không tồn tại trong bảng mẫu CV (foreign key). Hãy seed bảng template trên DB; body JSON chỉ dùng templateId (camelCase).';
         }
         return text;
@@ -157,11 +156,16 @@ export function formatCvApiError(err: unknown): string {
   return ax.message;
 }
 
+const AXIOS_TIMEOUT_MS = 15_000; // 15 giây
+const AXIOS_MAX_RETRIES = 2;
+
 const apiClient = axios.create({
   baseURL: `${API_URL}/api/v1`,
-  headers: { 'Content-Type': 'application/json' }
+  headers: { 'Content-Type': 'application/json' },
+  timeout: AXIOS_TIMEOUT_MS,
 });
 
+// Interceptor gắn Bearer token vào mỗi request
 apiClient.interceptors.request.use((config) => {
   const token = getAccessToken();
   if (token) {
@@ -169,6 +173,33 @@ apiClient.interceptors.request.use((config) => {
   }
   return config;
 }, (error) => Promise.reject(error));
+
+// Interceptor tự động retry khi timeout hoặc server tạm thời lỗi (503/504)
+// Chỉ retry với GET requests để tránh tạo dữ liệu trùng lặp
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error: AxiosError) => {
+    const config = error.config as typeof error.config & { _retryCount?: number };
+    if (!config) return Promise.reject(error);
+
+    const method = (config.method ?? '').toUpperCase();
+    const isGet = method === 'GET';
+    if (!isGet) return Promise.reject(error);
+
+    const isTimeout = error.code === 'ECONNABORTED';
+    const status = (error.response as { status?: number } | undefined)?.status;
+    const isServerUnavailable = status === 503 || status === 504;
+    if (!isTimeout && !isServerUnavailable) return Promise.reject(error);
+
+    config._retryCount = (config._retryCount ?? 0) + 1;
+    if (config._retryCount > AXIOS_MAX_RETRIES) return Promise.reject(error);
+
+    // Đợi trước khi thử lại: lần 1 chờ 1s, lần 2 chờ 2s
+    await new Promise(resolve => setTimeout(resolve, 1000 * config._retryCount!));
+    console.warn(`[CV API] Retry lần ${config._retryCount}/${AXIOS_MAX_RETRIES}: ${config.url}`);
+    return apiClient(config);
+  }
+);
 
 export const CvService = {
   // Lấy bản draft CV (GET /api/v1/cv-builder)
@@ -205,6 +236,13 @@ export const CvService = {
     return response.data;
   },
 
+  // Lấy danh sách mẫu CV hoàn chỉnh (GET /api/cv-builder/samples?industry=...)
+  getSamples: async (industry?: string) => {
+    const params = industry ? { industry } : {};
+    const response = await apiClient.get('/cv-builder/samples', { params });
+    return response.data;
+  },
+
   // Trợ lý AI Suggestion (POST /api/cv-builder/ai-suggest)
   aiSuggest: async (payload: { industry: string; section: string; currentText?: string }) => {
     const response = await apiClient.post('/cv-builder/ai-suggest', payload);
@@ -230,12 +268,6 @@ export const CvService = {
     const response = await apiClient.post('/cv-builder/export', p, {
       responseType: 'blob'
     });
-    return response.data;
-  },
-
-  // Lấy HTML xem trước (POST /api/v1/cv-builder/preview)
-  getPreviewHtml: async (payload: any): Promise<string> => {
-    const response = await apiClient.post('/cv-builder/preview', payload);
     return response.data;
   }
 };

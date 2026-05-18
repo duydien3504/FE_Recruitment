@@ -64,17 +64,25 @@ interface ApplicationDetail extends Application {
 
 interface Interview {
     interviewId: number;
-    title: string;
-    description: string;
-    startTime: string;
-    endTime: string;
-    location: string;
-    meetingUrl?: string;
-    type: 'ONLINE' | 'OFFLINE';
+    interviewTime: string;
+    type: string;
+    location: string | null;
+    meetingLink: string | null;
+    note: string | null;
     status: string;
-    jobTitle: string;
-    companyName: string;
-    companyLogo: string;
+    application: {
+        jobPost: {
+            jobPostId: number;
+            title: string;
+            companyId: string;
+            company: {
+                companyId: string;
+                name: string;
+                logoUrl: string;
+                addressDetail: string;
+            }
+        }
+    }
 }
 
 export default function ApplicationsPage() {
@@ -293,11 +301,11 @@ export default function ApplicationsPage() {
                                             <div className="p-6">
                                                 <div className="flex items-center gap-4 mb-6">
                                                     <div className="w-12 h-12 bg-gray-50 rounded-lg p-2 border border-gray-100">
-                                                        <img src={interview.companyLogo} alt={interview.companyName} className="w-full h-full object-contain" />
+                                                        <img src={interview.application?.jobPost?.company?.logoUrl || '/placeholder.png'} alt={interview.application?.jobPost?.company?.name || 'Company'} className="w-full h-full object-contain" />
                                                     </div>
                                                     <div>
-                                                        <h4 className="font-bold text-gray-900 line-clamp-1">{interview.title}</h4>
-                                                        <p className="text-xs text-gray-500">{interview.companyName} • {interview.jobTitle}</p>
+                                                        <h4 className="font-bold text-gray-900 line-clamp-1">Phỏng vấn {interview.type || ''}</h4>
+                                                        <p className="text-xs text-gray-500">{interview.application?.jobPost?.company?.name || 'Công ty'} • {interview.application?.jobPost?.title || 'Vị trí ứng tuyển'}</p>
                                                     </div>
                                                 </div>
 
@@ -309,32 +317,43 @@ export default function ApplicationsPage() {
                                                         <div>
                                                             <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Thời gian</p>
                                                             <p className="text-sm font-bold text-gray-700">
-                                                                {new Date(interview.startTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} -
-                                                                {new Date(interview.endTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                                                                {interview.interviewTime ? new Date(interview.interviewTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : 'Chưa cập nhật'}
                                                             </p>
-                                                            <p className="text-xs text-gray-500">{new Date(interview.startTime).toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
+                                                            <p className="text-xs text-gray-500">{interview.interviewTime ? new Date(interview.interviewTime).toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' }) : 'Chưa cập nhật'}</p>
                                                         </div>
                                                     </div>
 
                                                     <div className="flex items-start gap-3">
                                                         <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center flex-shrink-0">
-                                                            {interview.type === 'ONLINE' ? <MonitorIcon size={16} /> : <MapIcon size={16} />}
+                                                            {interview.type?.toUpperCase() === 'ONLINE' ? <MonitorIcon size={16} /> : <MapIcon size={16} />}
                                                         </div>
                                                         <div>
                                                             <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Hình thức & Địa điểm</p>
-                                                            <p className="text-sm font-bold text-gray-700">{interview.type === 'ONLINE' ? 'Phỏng vấn Online' : 'Phỏng vấn Offline'}</p>
-                                                            <p className="text-xs text-gray-500 line-clamp-1">{interview.location}</p>
+                                                            <p className="text-sm font-bold text-gray-700">{interview.type?.toUpperCase() === 'ONLINE' ? 'Phỏng vấn Online' : 'Phỏng vấn Offline'}</p>
+                                                            <p className="text-xs text-gray-500 line-clamp-1">{interview.location || 'Chưa cập nhật'}</p>
                                                         </div>
                                                     </div>
+
+                                                    {interview.note && (
+                                                        <div className="flex items-start gap-3 mt-2">
+                                                            <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
+                                                                <FileText size={16} />
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Ghi chú</p>
+                                                                <p className="text-sm font-medium text-gray-700">{interview.note}</p>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
 
                                                 <div className="mt-6 pt-6 border-t border-gray-50 flex items-center justify-between">
                                                     <div className="px-3 py-1 bg-green-50 text-green-600 rounded-lg text-[10px] font-bold uppercase tracking-wider">
-                                                        {interview.status}
+                                                        {interview.status || 'SCHEDULED'}
                                                     </div>
-                                                    {interview.type === 'ONLINE' && interview.meetingUrl && (
+                                                    {interview.type?.toUpperCase() === 'ONLINE' && interview.meetingLink && (
                                                         <a
-                                                            href={interview.meetingUrl}
+                                                            href={interview.meetingLink}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
                                                             className="text-primary text-sm font-bold hover:underline flex items-center gap-1"

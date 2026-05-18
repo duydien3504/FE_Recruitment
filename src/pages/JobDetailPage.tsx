@@ -28,6 +28,7 @@ interface JobDetail {
     expiredAt?: string;
     company: {
         companyId: string;
+        userId?: string;
         name: string;
         logoUrl: string;
         scale?: string;
@@ -210,12 +211,32 @@ export default function JobDetailPage() {
         }
         setChatLoading(true);
         try {
-            const body: Record<string, string> = {
-                companyId: job.company.companyId
-            };
+            // BE yêu cầu receiverUserId (userId của employer/owner công ty)
+            // job.company.userId là userId của employer sở hữu công ty này
+            const receiverUserId = job.company.userId;
+
+            if (!receiverUserId) {
+                // Fallback: tìm conversation đã tồn tại trong danh sách
+                const listRes = await fetchWithAuth(`${apiUrl}/api/v1/conversations`);
+                if (listRes.ok) {
+                    const listJson = await listRes.json();
+                    const existing = (listJson.data || []).find(
+                        (c: any) => c.company && String(c.company.companyId) === String(job.company.companyId)
+                    );
+                    if (existing) {
+                        const convId = existing.conversationsId || existing.conversationId;
+                        setActiveConvId(convId);
+                        await fetchChatMessages(convId);
+                    } else {
+                        toast.error('Không thể mở cuộc trò chuyện với nhà tuyển dụng này');
+                    }
+                }
+                return;
+            }
+
             const res = await fetchWithAuth(`${apiUrl}/api/v1/conversations`, {
                 method: 'POST',
-                body: JSON.stringify(body)
+                body: JSON.stringify({ receiverUserId })
             });
             if (res.ok) {
                 const json = await res.json();
@@ -225,7 +246,7 @@ export default function JobDetailPage() {
                     await fetchChatMessages(convId);
                 }
             } else {
-                // Nếu conv đã tồn tại, thử lấy danh sách conversations để tìm
+                // Nếu conv đã tồn tại (hoặc lỗi khác), thử lấy danh sách conversations để tìm
                 const listRes = await fetchWithAuth(`${apiUrl}/api/v1/conversations`);
                 if (listRes.ok) {
                     const listJson = await listRes.json();
@@ -233,8 +254,12 @@ export default function JobDetailPage() {
                         (c: any) => c.company && String(c.company.companyId) === String(job.company.companyId)
                     );
                     if (existing) {
-                        setActiveConvId(existing.conversationsId);
-                        await fetchChatMessages(existing.conversationsId);
+                        const convId = existing.conversationsId || existing.conversationId;
+                        setActiveConvId(convId);
+                        await fetchChatMessages(convId);
+                    } else {
+                        const errJson = await res.json().catch(() => ({}));
+                        toast.error(errJson.message || 'Không thể mở cuộc trò chuyện');
                     }
                 }
             }
@@ -362,13 +387,14 @@ export default function JobDetailPage() {
         setApplying(true);
         try {
             const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+            const body: Record<string, unknown> = {
+                jobPostId: parseInt(id!),
+                resumesId: parseInt(selectedResumeId),
+                coverLetter: coverLetter,
+            };
             const response = await fetchWithAuth(`${apiUrl}/api/v1/applications`, {
                 method: 'POST',
-                body: JSON.stringify({
-                    jobPostId: parseInt(id!),
-                    resumesId: parseInt(selectedResumeId),
-                    cover_letter: coverLetter
-                })
+                body: JSON.stringify(body)
             });
 
             if (response.ok) {
@@ -376,8 +402,12 @@ export default function JobDetailPage() {
                 setHasApplied(true);
                 setShowApplyModal(false);
             } else {
-                const errJson = await response.json();
-                toast.error(errJson.message || "Ứng tuyển thất bại. Vui lòng thử lại sau.");
+                const errJson = await response.json().catch(() => ({}));
+                const errMsg =
+                    errJson.message ||
+                    (typeof errJson.error === 'string' ? errJson.error : errJson.error?.message) ||
+                    `Ứng tuyển thất bại (${response.status}). Vui lòng thử lại sau.`;
+                toast.error(errMsg);
             }
         } catch (error) {
             console.error("Error applying:", error);

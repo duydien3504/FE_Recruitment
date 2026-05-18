@@ -96,7 +96,8 @@ const PreviewModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOp
       </div>
     );
 
-    const items: any[] = cvData[sectionId] || [];
+    const raw = cvData[sectionId];
+    const items: any[] = Array.isArray(raw) ? raw : [];
     const labelRaw = cvData.customLabels?.[sectionId] || sectionLabels[sectionId] || sectionId.toUpperCase();
 
     return (
@@ -206,6 +207,7 @@ const CreateCVPage: React.FC = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
     console.log('✅ Chúc mừng! CV Store đã khởi tạo thành công.');
@@ -264,6 +266,22 @@ const CreateCVPage: React.FC = () => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ chạy khi mount
   }, []);
+
+  const handleSyncProfile = async () => {
+    setIsSyncing(true);
+    try {
+      const res = await CvService.autoFillProfile();
+      if (res.success && res.data) {
+        setCvData({ ...cvData, ...res.data });
+        toast.success('Đã đồng bộ hồ sơ thành công!', { description: 'Thông tin từ hồ sơ đã được điền vào CV.' });
+      }
+    } catch (error) {
+      console.error('Lỗi đồng bộ:', error);
+      toast.error('Không thể đồng bộ hồ sơ');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const handleExportPdf = async () => {
     setIsExporting(true);
@@ -369,6 +387,22 @@ const CreateCVPage: React.FC = () => {
           </div>
 
           <div className="flex items-center space-x-3">
+            {/* Đồng bộ hồ sơ */}
+            <button
+              onClick={handleSyncProfile}
+              disabled={isSyncing}
+              className="flex items-center space-x-2 text-xs font-semibold text-emerald-600 hover:text-emerald-700 px-4 py-1.5 rounded-lg border border-emerald-200 hover:border-emerald-300 hover:bg-emerald-50 transition-colors disabled:opacity-50"
+              title="Điền tự động thông tin từ hồ sơ cá nhân vào CV"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={isSyncing ? 'animate-spin' : ''}>
+                <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                <path d="M3 3v5h5" />
+                <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+                <path d="M16 16h5v5" />
+              </svg>
+              <span>{isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ hồ sơ'}</span>
+            </button>
+
             {/* Tải xuống PDF */}
             <button
               onClick={handleExportPdf}

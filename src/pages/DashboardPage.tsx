@@ -19,7 +19,6 @@ import {
     CheckCircle2,
     XCircle,
     Send,
-    FileText,
     Calendar,
     Clock,
     MapPin,
@@ -172,7 +171,6 @@ export default function DashboardPage() {
         meetingLink: '',
         note: ''
     });
-    const [selectedApplicationForInterview, setSelectedApplicationForInterview] = useState<any | null>(null);
     const [editingInterviewId, setEditingInterviewId] = useState<string | null>(null);
 
     // Payments State
@@ -339,8 +337,9 @@ export default function DashboardPage() {
             if (profileRes.ok) {
                 const profileJson = await profileRes.json();
                 setCurrentUser(profileJson.data);
-                // Fetch notifications after user is loaded
+                // Fetch notifications và unread count ngay khi vào trang
                 fetchNotifications();
+                fetchUnreadCount();
             }
 
             // Get company data
@@ -539,15 +538,40 @@ export default function DashboardPage() {
         }
     };
 
+    const fetchUnreadCount = async () => {
+        try {
+            const response = await fetchWithAuth(`${apiUrl}/api/v1/notifications/unread-count`);
+            if (response.ok) {
+                const json = await response.json();
+                const count =
+                    typeof json.data === 'number' ? json.data :
+                    typeof json.data?.count === 'number' ? json.data.count :
+                    typeof json.count === 'number' ? json.count : 0;
+                setUnreadCount(count);
+            }
+        } catch (error) {
+            console.error('Error fetching unread count:', error);
+        }
+    };
+
     const fetchNotifications = async () => {
         setNotificationsLoading(true);
         try {
             const response = await fetchWithAuth(`${apiUrl}/api/v1/notifications`);
             if (response.ok) {
                 const json = await response.json();
-                const fetchedNotifs = json.data || [];
-                setNotifications(fetchedNotifs);
-                setUnreadCount(fetchedNotifs.filter((n: any) => !n.isRead).length);
+                // Handle cả { data: [...] } và { data: { notifications: [...] } }
+                const raw = Array.isArray(json.data)
+                    ? json.data
+                    : Array.isArray(json.data?.notifications)
+                        ? json.data.notifications
+                        : Array.isArray(json.notifications)
+                            ? json.notifications
+                            : [];
+                setNotifications(raw);
+                setUnreadCount(raw.filter((n: any) => !n.isRead).length);
+                // Đồng bộ lại count từ API cho chính xác
+                fetchUnreadCount();
             }
         } catch (error) {
             console.error('Error fetching notifications:', error);
@@ -583,7 +607,7 @@ export default function DashboardPage() {
             if (response.ok) {
                 setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
                 setUnreadCount(0);
-                toast.success('All notifications marked as read');
+                toast.success('Đã đánh dấu tất cả thông báo là đã đọc');
             }
         } catch (error) {
             console.error('Error marking all read:', error);
@@ -591,7 +615,6 @@ export default function DashboardPage() {
     };
 
     const handleOpenScheduleModal = (application: any) => {
-        setSelectedApplicationForInterview(application);
         setInterviewFormData({
             applicationId: application.applicationId,
             interviewDate: '',
@@ -704,22 +727,57 @@ export default function DashboardPage() {
         }
     };
 
+    // Thanh toán lại cho job Draft — gọi POST /api/v1/payments/create-payment với jobPostId
+    const handleRetryPayment = async (jobId: string) => {
+        try {
+            const response = await fetchWithAuth(`${apiUrl}/api/v1/payments/create-payment`, {
+                method: 'POST',
+                body: JSON.stringify({ jobPostId: jobId })
+            });
+
+            if (response.ok) {
+                const json = await response.json();
+                // Normalize: data có thể là string URL hoặc object { paymentUrl, ... }
+                const paymentUrl =
+                    (typeof json.data === 'string' && json.data.startsWith('http') ? json.data : null) ||
+                    json.data?.paymentUrl ||
+                    json.data?.payment_url ||
+                    json.paymentUrl;
+
+                if (paymentUrl) {
+                    toast.success('Đang chuyển sang cổng thanh toán MoMo...');
+                    setTimeout(() => { window.location.href = paymentUrl; }, 1200);
+                } else {
+                    toast.error('Không nhận được link thanh toán từ server.');
+                }
+            } else {
+                const err = await response.json().catch(() => ({}));
+                toast.error(err?.message || 'Tạo link thanh toán thất bại. Vui lòng thử lại.');
+            }
+        } catch (err) {
+            console.error('Error retrying payment:', err);
+            toast.error('Lỗi kết nối khi tạo link thanh toán.');
+        }
+    };
+
     const handleToggleJobStatus = async (jobId: string, currentStatus: string) => {
-        const newStatus = currentStatus === 'OPEN' ? 'CLOSED' : 'OPEN'; // Assuming 'OPEN'/'CLOSED' or similar logic
+        const isActive = ['ACTIVE', 'Active'].includes(currentStatus);
+        const newStatus = isActive ? 'CLOSED' : 'ACTIVE';
         try {
             const response = await fetchWithAuth(`${apiUrl}/api/v1/jobs/${jobId}/status`, {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: newStatus })
             });
             if (response.ok) {
-                toast.success(`Job status updated to ${newStatus}`);
-                fetchJobs(); // Refresh job list
+                toast.success(newStatus === 'ACTIVE' ? 'Đã mở lại tin tuyển dụng.' : 'Đã đóng tin tuyển dụng.');
+                fetchJobs();
             } else {
-                toast.error('Failed to update job status');
+                const err = await response.json().catch(() => ({}));
+                toast.error(err?.message || 'Cập nhật trạng thái thất bại.');
             }
         } catch (error) {
             console.error('Error updating job status:', error);
+            toast.error('Lỗi kết nối khi cập nhật trạng thái.');
         }
     };
 
@@ -928,12 +986,30 @@ export default function DashboardPage() {
 
             if (response.ok) {
                 const json = await response.json();
-                toast.success(editingJob ? 'Đã cập nhật tin đăng' : 'Đã tạo tin đăng mới');
                 setShowJobModal(false);
                 if (company) fetchJobs(company.companyId);
 
-                if (!editingJob && json.data && typeof json.data === 'string' && json.data.startsWith('http')) {
-                    window.location.href = json.data;
+                if (!editingJob) {
+                    // API trả về: { data: { jobPostId, status:"Draft", paymentUrl, amount } }
+                    const paymentUrl =
+                        json.data?.paymentUrl ||
+                        json.data?.payment_url ||
+                        (typeof json.data === 'string' && json.data.startsWith('http') ? json.data : null);
+                    const amount = json.data?.amount;
+
+                    if (paymentUrl) {
+                        toast.success(
+                            amount
+                                ? `Tạo tin thành công! Đang chuyển sang MoMo để thanh toán ${Number(amount).toLocaleString('vi-VN')}đ...`
+                                : (json.message || 'Tạo tin thành công! Đang chuyển sang cổng thanh toán...'),
+                            { duration: 2000 }
+                        );
+                        setTimeout(() => { window.location.href = paymentUrl; }, 1800);
+                    } else {
+                        toast.success(json.message || 'Đã tạo tin đăng mới');
+                    }
+                } else {
+                    toast.success('Đã cập nhật tin đăng');
                 }
             } else {
                 const errorData = await response.json().catch(() => ({}));
@@ -1069,7 +1145,11 @@ export default function DashboardPage() {
 
                                     <div className="relative">
                                         <button
-                                            onClick={() => setShowNotifications(!showNotifications)}
+                                            onClick={() => {
+                                                const next = !showNotifications;
+                                                setShowNotifications(next);
+                                                if (next) fetchNotifications();
+                                            }}
                                             className="w-14 h-14 bg-white border border-slate-200 rounded-[22px] flex items-center justify-center text-slate-400 hover:text-blue-600 hover:scale-105 active:scale-95 transition-all shadow-sm relative"
                                         >
                                             <Bell size={24} />
@@ -1082,12 +1162,27 @@ export default function DashboardPage() {
                                             <div className="absolute right-0 top-full mt-4 w-96 bg-white rounded-[32px] shadow-2xl border border-slate-100 overflow-hidden z-[60] animate-in fade-in zoom-in-95 duration-200 origin-top-right">
                                                 <div className="p-6 border-b border-slate-50 flex items-center justify-between">
                                                     <h3 className="font-black text-slate-900 tracking-tight uppercase">Notifications</h3>
-                                                    {unreadCount > 0 && (
-                                                        <span className="bg-blue-600 text-white text-[10px] font-black px-2 py-1 rounded-full">{unreadCount} New</span>
-                                                    )}
+                                                    <div className="flex items-center gap-2">
+                                                        {unreadCount > 0 && (
+                                                            <>
+                                                                <span className="bg-blue-600 text-white text-[10px] font-black px-2 py-1 rounded-full">{unreadCount} New</span>
+                                                                <button
+                                                                    onClick={handleMarkAllRead}
+                                                                    className="text-[10px] font-bold text-blue-600 hover:underline"
+                                                                    title="Đánh dấu tất cả đã đọc"
+                                                                >
+                                                                    Đọc tất cả
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                    </div>
                                                 </div>
                                                 <div className="max-h-[400px] overflow-y-auto">
-                                                    {notifications.length > 0 ? (
+                                                    {notificationsLoading ? (
+                                                        <div className="py-10 flex justify-center">
+                                                            <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-blue-600"></div>
+                                                        </div>
+                                                    ) : notifications.length > 0 ? (
                                                         notifications.map((notif: any) => {
                                                             const notifId = notif.notificationId || notif.id || Math.random();
                                                             return (
@@ -1102,7 +1197,9 @@ export default function DashboardPage() {
                                                                             <h4 className={`text-sm font-bold mb-1 ${!notif.isRead ? 'text-slate-900' : 'text-slate-500'}`}>{notif.title}</h4>
                                                                             <p className="text-xs text-slate-500 font-medium leading-relaxed mb-3">{notif.message}</p>
                                                                             <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest block">
-                                                                                {notif.created_at ? formatDistanceToNow(new Date(notif.created_at), { addSuffix: true }) : 'Just now'}
+                                                                                {(notif.createdAt || notif.created_at)
+                                                                                    ? formatDistanceToNow(new Date(notif.createdAt || notif.created_at), { addSuffix: true })
+                                                                                    : 'Vừa xong'}
                                                                             </span>
                                                                         </div>
                                                                     </div>
@@ -1153,13 +1250,13 @@ export default function DashboardPage() {
                                         <div>
                                             <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase leading-none">Application Trends</h2>
                                             <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-2 flex items-center gap-2">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-blue-600"></div>
+                                                <span className="w-1.5 h-1.5 rounded-full bg-blue-600 inline-block flex-shrink-0"></span>
                                                 Weekly performance analysis
                                             </p>
                                         </div>
                                     </div>
-                                    <div className="h-[400px] w-full mt-auto">
-                                        <ResponsiveContainer width="100%" height="100%">
+                                    <div className="h-[400px] w-full mt-auto" style={{ minWidth: 0 }}>
+                                        <ResponsiveContainer width="100%" height={400}>
                                             <AreaChart data={analyticsData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                                                 <defs>
                                                     <linearGradient id="colorApps" x1="0" y1="0" x2="0" y2="1">
@@ -1184,8 +1281,8 @@ export default function DashboardPage() {
 
                                 <div className="bg-white p-8 sm:p-10 rounded-[44px] border border-slate-200 shadow-sm flex flex-col h-full">
                                     <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase leading-none mb-2">Job Categories</h2>
-                                    <div className="flex-1 flex items-center justify-center relative min-h-[300px]">
-                                        <ResponsiveContainer width="100%" height="100%">
+                                    <div className="flex-1 flex items-center justify-center relative min-h-[300px]" style={{ minWidth: 0 }}>
+                                        <ResponsiveContainer width="100%" height={300}>
                                             <RePieChart>
                                                 <Pie
                                                     data={[
@@ -1262,19 +1359,44 @@ export default function DashboardPage() {
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-slate-50">
-                                                    {applications.map((app) => (
+                                                    {applications.map((app) => {
+                                                        const candidateName = app.user?.fullName || app.fullName || app.candidate?.fullName || 'N/A';
+                                                        const candidateEmail = app.user?.email || app.email || app.candidate?.email || 'N/A';
+                                                        const appliedDate = app.appliedAt || app.createdAt || app.created_at;
+                                                        const statusUp = (app.status || '').toUpperCase();
+                                                        const statusColor =
+                                                            ['ACCEPTED', 'APPROVED'].includes(statusUp) ? 'bg-emerald-50 text-emerald-600' :
+                                                            ['REJECTED'].includes(statusUp) ? 'bg-red-50 text-red-600' :
+                                                            ['INTERVIEW', 'INTERVIEWING'].includes(statusUp) ? 'bg-purple-50 text-purple-600' :
+                                                            ['REVIEWING', 'VIEWED'].includes(statusUp) ? 'bg-blue-50 text-blue-600' :
+                                                            'bg-amber-50 text-amber-600';
+                                                        const statusLabel =
+                                                            statusUp === 'PENDING' ? 'Chờ duyệt' :
+                                                            statusUp === 'REVIEWING' ? 'Đang xem' :
+                                                            statusUp === 'VIEWED' ? 'Đã xem' :
+                                                            statusUp === 'INTERVIEW' || statusUp === 'INTERVIEWING' ? 'Phỏng vấn' :
+                                                            statusUp === 'ACCEPTED' || statusUp === 'APPROVED' ? 'Chấp nhận' :
+                                                            statusUp === 'REJECTED' ? 'Từ chối' :
+                                                            app.status || 'N/A';
+                                                        return (
                                                         <tr key={app.applicationId} className="hover:bg-slate-50/50 transition-colors">
-                                                            <td className="px-8 py-5 font-bold text-slate-900">{app.fullName || 'N/A'}</td>
-                                                            <td className="px-8 py-5 font-medium text-slate-600">{app.email || 'N/A'}</td>
+                                                            <td className="px-8 py-5">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center font-black text-blue-600 text-sm flex-shrink-0">
+                                                                        {app.user?.avatarUrl
+                                                                            ? <img src={app.user.avatarUrl} alt="" className="w-full h-full rounded-full object-cover" />
+                                                                            : candidateName.charAt(0).toUpperCase()}
+                                                                    </div>
+                                                                    <span className="font-bold text-slate-900">{candidateName}</span>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-8 py-5 font-medium text-slate-600">{candidateEmail}</td>
                                                             <td className="px-8 py-5 font-bold text-slate-500 text-sm">
-                                                                {app.created_at ? new Date(app.created_at).toLocaleDateString() : 'N/A'}
+                                                                {appliedDate ? new Date(appliedDate).toLocaleDateString('vi-VN') : 'N/A'}
                                                             </td>
                                                             <td className="px-8 py-5">
-                                                                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${app.status === 'Accepted' ? 'bg-emerald-50 text-emerald-600' :
-                                                                    app.status === 'Rejected' ? 'bg-red-50 text-red-600' :
-                                                                        'bg-blue-50 text-blue-600'
-                                                                    }`}>
-                                                                    {app.status}
+                                                                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${statusColor}`}>
+                                                                    {statusLabel}
                                                                 </span>
                                                             </td>
                                                             <td className="px-8 py-5 text-center">
@@ -1282,30 +1404,31 @@ export default function DashboardPage() {
                                                                     <button
                                                                         onClick={() => setViewingApplication(app)}
                                                                         className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                                                                        title="View Details"
+                                                                        title="Xem chi tiết"
                                                                     >
                                                                         <Eye size={18} />
                                                                     </button>
                                                                     <button
                                                                         onClick={() => handleUpdateApplicationStatus(app.applicationId, 'Accepted')}
-                                                                        className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
-                                                                        title="Accept"
-                                                                        disabled={applicationStatusUpdating === app.applicationId}
+                                                                        className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all disabled:opacity-40"
+                                                                        title="Chấp nhận"
+                                                                        disabled={applicationStatusUpdating === app.applicationId || ['ACCEPTED', 'APPROVED'].includes(statusUp)}
                                                                     >
                                                                         <CheckCircle2 size={18} />
                                                                     </button>
                                                                     <button
                                                                         onClick={() => handleUpdateApplicationStatus(app.applicationId, 'Rejected')}
-                                                                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                                                                        title="Reject"
-                                                                        disabled={applicationStatusUpdating === app.applicationId}
+                                                                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all disabled:opacity-40"
+                                                                        title="Từ chối"
+                                                                        disabled={applicationStatusUpdating === app.applicationId || statusUp === 'REJECTED'}
                                                                     >
                                                                         <XCircle size={18} />
                                                                     </button>
                                                                 </div>
                                                             </td>
                                                         </tr>
-                                                    ))}
+                                                        );
+                                                    })}
                                                 </tbody>
                                             </table>
                                         </div>
@@ -1651,18 +1774,35 @@ export default function DashboardPage() {
                                                             {job.applicationCount || 0}
                                                         </td>
                                                         <td className="px-6 py-8 text-center">
-                                                            <span className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest ${job.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
-                                                                {job.status}
+                                                            <span className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                                                                ['ACTIVE', 'Active', 'Approved'].includes(job.status) ? 'bg-emerald-50 text-emerald-600' :
+                                                                ['Draft', 'DRAFT', 'Pending'].includes(job.status)   ? 'bg-amber-50 text-amber-600' :
+                                                                'bg-red-50 text-red-600'
+                                                            }`}>
+                                                                {job.status === 'Draft' ? 'Chờ thanh toán' : job.status}
                                                             </span>
                                                         </td>
                                                         <td className="px-6 py-8 text-center">
                                                             <div className="flex items-center justify-center gap-2">
-                                                                <button onClick={() => { setActiveTab('Applications'); fetchApplications(job.jobPostId); }} className="p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all" title="View Applications"><UsersIcon size={18} /></button>
-                                                                <button onClick={() => handleOpenEditModal(job)} className="p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all" title="Edit Job"><Edit size={18} /></button>
-                                                                <button onClick={() => handleDeleteJob(job.jobPostId)} className="p-3 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all" title="Delete Job"><Trash2 size={18} /></button>
-                                                                <button onClick={() => handleToggleJobStatus(job.jobPostId, job.status)} className={`p-3 rounded-xl transition-all ${job.status === 'ACTIVE' ? 'text-amber-500 hover:bg-amber-50' : 'text-emerald-500 hover:bg-emerald-50'}`} title={job.status === 'ACTIVE' ? 'Close Job' : 'Open Job'}>
-                                                                    {job.status === 'ACTIVE' ? <XCircle size={18} /> : <CheckCircle2 size={18} />}
-                                                                </button>
+                                                                {/* Nút thanh toán lại — chỉ hiện với Draft */}
+                                                                {['Draft', 'DRAFT'].includes(job.status) && (
+                                                                    <button
+                                                                        onClick={() => handleRetryPayment(job.jobPostId)}
+                                                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg transition-all shadow-sm shadow-amber-200"
+                                                                        title="Thanh toán để đăng tin"
+                                                                    >
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                                                                        Thanh toán
+                                                                    </button>
+                                                                )}
+                                                                <button onClick={() => { setActiveTab('Applications'); fetchApplications(job.jobPostId); }} className="p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all" title="Xem ứng viên"><UsersIcon size={18} /></button>
+                                                                <button onClick={() => handleOpenEditModal(job)} className="p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all" title="Chỉnh sửa"><Edit size={18} /></button>
+                                                                <button onClick={() => handleDeleteJob(job.jobPostId)} className="p-3 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all" title="Xóa tin"><Trash2 size={18} /></button>
+                                                                {['ACTIVE', 'Active', 'CLOSED', 'Closed'].includes(job.status) && (
+                                                                    <button onClick={() => handleToggleJobStatus(job.jobPostId, job.status)} className={`p-3 rounded-xl transition-all ${['ACTIVE', 'Active'].includes(job.status) ? 'text-amber-500 hover:bg-amber-50' : 'text-emerald-500 hover:bg-emerald-50'}`} title={['ACTIVE', 'Active'].includes(job.status) ? 'Đóng tin' : 'Mở lại tin'}>
+                                                                        {['ACTIVE', 'Active'].includes(job.status) ? <XCircle size={18} /> : <CheckCircle2 size={18} />}
+                                                                    </button>
+                                                                )}
                                                             </div>
                                                         </td>
                                                     </tr>
