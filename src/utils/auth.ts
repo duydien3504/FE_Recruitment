@@ -5,6 +5,31 @@
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
+// ─── Timeout & Retry config ────────────────────────────────────────────────
+const FETCH_TIMEOUT_MS = 15_000; // Chờ tối đa 15 giây mỗi request
+const FETCH_MAX_RETRIES = 2;     // Tự động thử lại tối đa 2 lần (chỉ GET)
+
+const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+
+/**
+ * Thực hiện 1 lần fetch với giới hạn thời gian chờ (timeout).
+ * Nếu quá FETCH_TIMEOUT_MS sẽ hủy request và ném lỗi rõ ràng.
+ */
+async function fetchWithTimeout(url: string, options: RequestInit): Promise<Response> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    try {
+        return await fetch(url, { ...options, signal: controller.signal });
+    } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') {
+            throw new Error('Yêu cầu quá thời gian chờ. Vui lòng kiểm tra kết nối và thử lại.');
+        }
+        throw err;
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
 /**
  * Get access token from storage
  */
@@ -79,45 +104,66 @@ export const refreshAccessToken = async (): Promise<string | null> => {
 };
 
 export const fetchWithAuth = async (url: string, options: RequestInit = {}): Promise<Response> => {
-    let token = getAccessToken();
+    const token = getAccessToken();
+    if (!token) throw new Error('No access token available');
 
-    if (!token) {
-        throw new Error('No access token available');
-    }
-
-    // Check if body is FormData (for file uploads)
     const isFormData = options.body instanceof FormData;
-
-    // Add authorization header
     const headers: Record<string, string> = {
         ...options.headers as Record<string, string>,
         'Authorization': `Bearer ${token}`,
     };
+    if (!isFormData) headers['Content-Type'] = 'application/json';
 
-    // Only add Content-Type for JSON requests, not for FormData
-    if (!isFormData) {
-        headers['Content-Type'] = 'application/json';
-    }
+    // GET requests được retry; POST/PUT/DELETE không retry để tránh tạo dữ liệu trùng
+    const method = (options.method || 'GET').toUpperCase();
+    const canRetry = method === 'GET';
+    const maxAttempts = canRetry ? FETCH_MAX_RETRIES + 1 : 1;
 
-    // Make initial request
-    let response = await fetch(url, { ...options, headers });
+    let lastError: unknown;
 
-    // If unauthorized (401), try to refresh token
-    if (response.status === 401) {
-        console.log('Access token expired, attempting to refresh...');
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        // Chờ trước khi thử lại: lần 1 chờ 1s, lần 2 chờ 2s
+        if (attempt > 0) {
+            await sleep(1000 * attempt);
+            console.warn(`[fetchWithAuth] Retry lần ${attempt}/${FETCH_MAX_RETRIES}: ${method} ${url}`);
+        }
 
-        const newToken = await refreshAccessToken();
+        try {
+            let response = await fetchWithTimeout(url, { ...options, headers });
 
-        if (newToken) {
-            // Retry request with new token
-            headers['Authorization'] = `Bearer ${newToken}`;
-            response = await fetch(url, { ...options, headers });
-        } else {
-            throw new Error('Failed to refresh token');
+            // 401 → thử refresh token và gọi lại 1 lần (không tính vào retry)
+            if (response.status === 401) {
+                console.log('Access token expired, attempting to refresh...');
+                const newToken = await refreshAccessToken();
+                if (newToken) {
+                    headers['Authorization'] = `Bearer ${newToken}`;
+                    response = await fetchWithTimeout(url, { ...options, headers });
+                } else {
+                    throw new Error('Failed to refresh token');
+                }
+            }
+
+            // 503/504 → server tạm thời bận, retry nếu được phép
+            if (canRetry && (response.status === 503 || response.status === 504) && attempt < maxAttempts - 1) {
+                lastError = new Error(`Máy chủ tạm thời bận (${response.status}), đang thử lại...`);
+                continue;
+            }
+
+            return response;
+        } catch (err) {
+            lastError = err;
+
+            const isTimeoutError = err instanceof Error && err.message.includes('quá thời gian');
+            const isNetworkError = err instanceof TypeError && err.message.includes('fetch');
+
+            // Chỉ retry khi là lỗi timeout hoặc mất mạng
+            if (!canRetry || (!isTimeoutError && !isNetworkError) || attempt >= maxAttempts - 1) {
+                throw err;
+            }
         }
     }
 
-    return response;
+    throw lastError;
 };
 
 /**

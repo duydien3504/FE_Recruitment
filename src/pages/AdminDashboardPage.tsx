@@ -75,6 +75,20 @@ interface AppNotification {
     link?: string;
 }
 
+// Các loại thông báo chỉ dành cho user thường (candidate/employer) — admin không cần xem
+const USER_ONLY_NOTIFICATION_TYPES = new Set([
+    'APPLICATION_UPDATE', 'application_update',
+    'APPLICATION_STATUS_UPDATE', 'application_status_update',
+    'INTERVIEW_INVITATION', 'interview_invitation',
+    'INTERVIEW_REMINDER', 'interview_reminder',
+    'JOB_MATCH', 'job_match',
+    'JOB_APPLIED', 'job_applied',
+    'PROFILE_VIEW', 'profile_view',
+]);
+
+const isAdminRelevantNotification = (notif: AppNotification) =>
+    !USER_ONLY_NOTIFICATION_TYPES.has(notif.type || '');
+
 interface Conversation {
     conversationsId: number;
     userId: string;
@@ -139,10 +153,12 @@ export default function AdminDashboardPage() {
     const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
     const [jobs, setJobs] = useState<any[]>([]);
     const [jobsLoading, setJobsLoading] = useState(false);
-    const [jobFilters, setJobFilters] = useState({
-        status: '',
-        keyword: ''
-    });
+    const [jobFilters, setJobFilters] = useState({ status: '', keyword: '' });
+    const [jobViewMode, setJobViewMode] = useState<'all' | 'pending'>('all');
+    const [pendingCount, setPendingCount] = useState(0);
+    const [showRejectModal, setShowRejectModal] = useState(false);
+    const [rejectJobId, setRejectJobId] = useState<string | null>(null);
+    const [rejectReason, setRejectReason] = useState('');
 
     // Metadata Management State (Categories, Locations, Skills)
     const [categories, setCategories] = useState<any[]>([]);
@@ -191,6 +207,9 @@ export default function AdminDashboardPage() {
             }
         };
         fetchUserProfile();
+        // Lấy số thông báo chưa đọc ngay khi vào trang
+        fetchUnreadCount();
+        fetchNotifications(1);
     }, []);
 
     useEffect(() => {
@@ -261,14 +280,14 @@ export default function AdminDashboardPage() {
             if (companiesStatus) queryParams.append('status', companiesStatus);
 
             const response = await fetchWithAuth(
-                `${apiUrl}/api/v1/companies?${queryParams.toString()}`
+                `${apiUrl}/api/v1/admin/companies?${queryParams.toString()}`
             );
             if (response.ok) {
                 const json = await response.json();
                 console.log('Companies API Response:', json);
-                // Depending on the API response structure, usually it's { data: [], total: 0 }
+                // The new admin API returns data in json.data and json.pagination
                 setCompanies(Array.isArray(json.data) ? json.data : []);
-                setCompaniesTotal(json.total || 0);
+                setCompaniesTotal(json.pagination?.total || json.total || 0);
             }
         } catch (err) {
             console.error('Error fetching companies:', err);
@@ -466,6 +485,15 @@ export default function AdminDashboardPage() {
         setIsMetadataModalOpen(true);
     };
 
+    const normalizeJobsArray = (json: any): any[] => {
+        const rawData = json.data;
+        if (Array.isArray(rawData)) return rawData;
+        if (Array.isArray(rawData?.content)) return rawData.content;
+        if (Array.isArray(rawData?.data)) return rawData.data;
+        return [];
+    };
+
+    // GET /api/v1/admin/jobs — lấy toàn bộ tin (có filter/search/paging)
     const fetchJobsAdmin = async () => {
         setJobsLoading(true);
         try {
@@ -477,16 +505,7 @@ export default function AdminDashboardPage() {
             const response = await fetchWithAuth(`${apiUrl}/api/v1/admin/jobs?${queryParams.toString()}`);
             if (response.ok) {
                 const json = await response.json();
-                // Handle both: {data: [...]} and {data: {content: [...]}} response shapes
-                const rawData = json.data;
-                const jobsArray = Array.isArray(rawData)
-                    ? rawData
-                    : Array.isArray(rawData?.content)
-                    ? rawData.content
-                    : Array.isArray(rawData?.data)
-                    ? rawData.data
-                    : [];
-                setJobs(jobsArray);
+                setJobs(normalizeJobsArray(json));
             }
         } catch (err) {
             console.error('Error fetching admin jobs:', err);
@@ -495,6 +514,31 @@ export default function AdminDashboardPage() {
         }
     };
 
+    // GET /api/v1/admin/jobs/pending — chỉ lấy tin chờ duyệt
+    const fetchPendingJobs = async () => {
+        setJobsLoading(true);
+        try {
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+            const response = await fetchWithAuth(`${apiUrl}/api/v1/admin/jobs/pending`);
+            if (response.ok) {
+                const json = await response.json();
+                const arr = normalizeJobsArray(json);
+                setJobs(arr);
+                setPendingCount(arr.length);
+            }
+        } catch (err) {
+            console.error('Error fetching pending jobs:', err);
+        } finally {
+            setJobsLoading(false);
+        }
+    };
+
+    const refreshJobs = () => {
+        if (jobViewMode === 'pending') fetchPendingJobs();
+        else fetchJobsAdmin();
+    };
+
+    // PATCH /api/v1/admin/jobs/:id/approve — duyệt tin
     const handleApproveJob = async (jobId: string) => {
         try {
             const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
@@ -503,7 +547,7 @@ export default function AdminDashboardPage() {
             });
             if (response.ok) {
                 toast.success('Duyệt tin tuyển dụng thành công!');
-                fetchJobsAdmin();
+                refreshJobs();
             } else {
                 toast.error('Duyệt tin thất bại.');
             }
@@ -512,19 +556,27 @@ export default function AdminDashboardPage() {
         }
     };
 
-    const handleRejectJob = async (jobId: string) => {
-        const reason = window.prompt('Nhập lý do từ chối:');
-        if (reason === null) return;
+    // Mở modal từ chối — PATCH /api/v1/admin/jobs/:id/reject sẽ gọi khi xác nhận
+    const openRejectModal = (jobId: string) => {
+        setRejectJobId(jobId);
+        setRejectReason('');
+        setShowRejectModal(true);
+    };
 
+    const handleConfirmReject = async () => {
+        if (!rejectJobId) return;
         try {
             const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-            const response = await fetchWithAuth(`${apiUrl}/api/v1/admin/jobs/${jobId}/reject`, {
+            const response = await fetchWithAuth(`${apiUrl}/api/v1/admin/jobs/${rejectJobId}/reject`, {
                 method: 'PATCH',
-                body: JSON.stringify({ reason })
+                body: JSON.stringify({ reason: rejectReason })
             });
             if (response.ok) {
                 toast.success('Đã từ chối tin tuyển dụng.');
-                fetchJobsAdmin();
+                setShowRejectModal(false);
+                setRejectJobId(null);
+                setRejectReason('');
+                refreshJobs();
             } else {
                 toast.error('Từ chối tin thất bại.');
             }
@@ -571,6 +623,26 @@ export default function AdminDashboardPage() {
         }
     };
 
+    // GET /api/v1/notifications/unread-count — lấy số thông báo chưa đọc chính xác
+    const fetchUnreadCount = async () => {
+        try {
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+            const response = await fetchWithAuth(`${apiUrl}/api/v1/notifications/unread-count`);
+            if (response.ok) {
+                const json = await response.json();
+                // BE có thể trả { data: { count: 5 } } hoặc { data: 5 } hoặc { count: 5 }
+                const count =
+                    typeof json.data === 'number' ? json.data :
+                    typeof json.data?.count === 'number' ? json.data.count :
+                    typeof json.count === 'number' ? json.count : 0;
+                setUnreadCount(count);
+            }
+        } catch (err) {
+            console.error('Error fetching unread count:', err);
+        }
+    };
+
+    // GET /api/v1/notifications — lấy danh sách thông báo (phân trang)
     const fetchNotifications = async (page: number, append = false) => {
         if (notificationsLoading) return;
         setNotificationsLoading(true);
@@ -579,19 +651,18 @@ export default function AdminDashboardPage() {
             const response = await fetchWithAuth(`${apiUrl}/api/v1/notifications?page=${page}&limit=20`);
             if (response.ok) {
                 const json = await response.json();
-                const newNotifications = json.data || [];
+                const raw = Array.isArray(json.data) ? json.data :
+                    Array.isArray(json.data?.content) ? json.data.content : [];
+                // Lọc bỏ thông báo thuộc loại user thường — admin không cần thấy
+                const newNotifications = raw.filter(isAdminRelevantNotification);
                 if (append) {
                     setNotifications(prev => [...prev, ...newNotifications]);
                 } else {
                     setNotifications(newNotifications);
                 }
                 setHasMoreNotifications(newNotifications.length === 20);
-                // Assume unread count comes from somewhere or calculate from first page
-                if (page === 1) {
-                    const unread = newNotifications.filter((n: any) => !n.isRead).length;
-                    setUnreadCount(unread > 0 ? unread : 0);
-                    // If backend provides meta for total unread, use it here
-                }
+                // Luôn lấy unread count chính xác từ API riêng thay vì đếm thủ công
+                if (page === 1) fetchUnreadCount();
             }
         } catch (err) {
             console.error('Error fetching notifications:', err);
@@ -606,6 +677,7 @@ export default function AdminDashboardPage() {
         fetchNotifications(nextPage, true);
     };
 
+    // PATCH /api/v1/notifications/{id}/read — đánh dấu 1 thông báo đã đọc
     const markAsRead = async (id: string) => {
         try {
             const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
@@ -616,6 +688,22 @@ export default function AdminDashboardPage() {
             }
         } catch (err) {
             console.error('Error marking notification as read:', err);
+        }
+    };
+
+    // PATCH /api/v1/notifications/read-all — đánh dấu tất cả thông báo là đã đọc
+    const markAllAsRead = async () => {
+        try {
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+            const response = await fetchWithAuth(`${apiUrl}/api/v1/notifications/read-all`, { method: 'PATCH' });
+            if (response.ok) {
+                setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+                setUnreadCount(0);
+                toast.success('Đã đánh dấu tất cả thông báo là đã đọc');
+            }
+        } catch (err) {
+            console.error('Error marking all as read:', err);
+            toast.error('Không thể đánh dấu tất cả. Vui lòng thử lại.');
         }
     };
 
@@ -862,7 +950,8 @@ export default function AdminDashboardPage() {
         } else if (activeTab === 'Employer Management') {
             fetchCompanies();
         } else if (activeTab === 'Jobs Management') {
-            fetchJobsAdmin();
+            if (jobViewMode === 'pending') fetchPendingJobs();
+            else fetchJobsAdmin();
         } else if (activeTab === 'Categories') {
             fetchCategories();
             setMetadataType('Category');
@@ -873,7 +962,7 @@ export default function AdminDashboardPage() {
             fetchSkills();
             setMetadataType('Skill');
         }
-    }, [activeTab, userFilters, companiesPage, companiesKeyword, companiesStatus, jobFilters]);
+    }, [activeTab, userFilters, companiesPage, companiesKeyword, companiesStatus, jobFilters, jobViewMode]);
 
     const sidebarItems = [
         { name: 'Overview', icon: LayoutDashboard },
@@ -1012,10 +1101,23 @@ export default function AdminDashboardPage() {
                                     ></div>
                                     <div className="absolute right-0 mt-4 w-[280px] sm:w-[400px] bg-white rounded-3xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] border border-slate-100 z-30 overflow-hidden animate-in slide-in-from-top-2 duration-200">
                                         <div className="p-4 sm:p-6 pb-2 flex items-center justify-between">
-                                            <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Thông báo</h3>
-                                            <button className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
-                                                <MoreHorizontal size={20} />
-                                            </button>
+                                            <div className="flex items-center gap-3">
+                                                <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Thông báo</h3>
+                                                {unreadCount > 0 && (
+                                                    <span className="px-2 py-0.5 bg-blue-600 text-white text-[10px] font-black rounded-full">
+                                                        {unreadCount}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {unreadCount > 0 && (
+                                                <button
+                                                    onClick={markAllAsRead}
+                                                    className="text-xs font-black text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-all"
+                                                    title="Đánh dấu tất cả đã đọc"
+                                                >
+                                                    Đọc tất cả
+                                                </button>
+                                            )}
                                         </div>
 
                                         <div className="px-6 py-4 flex gap-2">
@@ -1767,38 +1869,62 @@ export default function AdminDashboardPage() {
                         </div>
                     ) : activeTab === 'Jobs Management' ? (
                         <div className="space-y-8 animate-in fade-in duration-500">
-                            <div>
-                                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-slate-900 uppercase leading-none">Jobs Management</h1>
-                                <p className="text-slate-400 text-sm sm:text-base lg:text-lg font-medium mt-1 sm:mt-3">Review and manage job postings from employers.</p>
+                            <div className="flex items-start justify-between flex-wrap gap-4">
+                                <div>
+                                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-slate-900 uppercase leading-none">Jobs Management</h1>
+                                    <p className="text-slate-400 text-sm sm:text-base lg:text-lg font-medium mt-1 sm:mt-3">Review and manage job postings from employers.</p>
+                                </div>
+                                {/* Quick view tabs */}
+                                <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-2xl">
+                                    <button
+                                        onClick={() => setJobViewMode('all')}
+                                        className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${jobViewMode === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    >
+                                        Tất cả
+                                    </button>
+                                    <button
+                                        onClick={() => setJobViewMode('pending')}
+                                        className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${jobViewMode === 'pending' ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    >
+                                        Chờ duyệt
+                                        {pendingCount > 0 && (
+                                            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${jobViewMode === 'pending' ? 'bg-white/30 text-white' : 'bg-amber-100 text-amber-600'}`}>
+                                                {pendingCount}
+                                            </span>
+                                        )}
+                                    </button>
+                                </div>
                             </div>
 
-                            {/* Filters */}
-                            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-wrap gap-4 items-end">
-                                <div className="flex-1 min-w-[200px]">
-                                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Search Jobs</label>
-                                    <input
-                                        type="text"
-                                        placeholder="Job title, company..."
-                                        value={jobFilters.keyword}
-                                        onChange={(e) => setJobFilters({ ...jobFilters, keyword: e.target.value })}
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-sm"
-                                    />
+                            {/* Filters — chỉ hiện khi xem tất cả */}
+                            {jobViewMode === 'all' && (
+                                <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-wrap gap-4 items-end">
+                                    <div className="flex-1 min-w-[200px]">
+                                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Search Jobs</label>
+                                        <input
+                                            type="text"
+                                            placeholder="Job title, company..."
+                                            value={jobFilters.keyword}
+                                            onChange={(e) => setJobFilters({ ...jobFilters, keyword: e.target.value })}
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-sm"
+                                        />
+                                    </div>
+                                    <div className="flex-1 min-w-[140px]">
+                                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Status</label>
+                                        <select
+                                            value={jobFilters.status}
+                                            onChange={(e) => setJobFilters({ ...jobFilters, status: e.target.value })}
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-sm appearance-none"
+                                        >
+                                            <option value="">All Status</option>
+                                            <option value="Pending">Pending</option>
+                                            <option value="Approved">Approved</option>
+                                            <option value="Rejected">Rejected</option>
+                                            <option value="Expired">Expired</option>
+                                        </select>
+                                    </div>
                                 </div>
-                                <div className="flex-1 min-w-[140px]">
-                                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Status</label>
-                                    <select
-                                        value={jobFilters.status}
-                                        onChange={(e) => setJobFilters({ ...jobFilters, status: e.target.value })}
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-sm appearance-none"
-                                    >
-                                        <option value="">All Status</option>
-                                        <option value="Pending">Pending</option>
-                                        <option value="Approved">Approved</option>
-                                        <option value="Rejected">Rejected</option>
-                                        <option value="Expired">Expired</option>
-                                    </select>
-                                </div>
-                            </div>
+                            )}
 
                             {/* Jobs Table */}
                             <div className="bg-white rounded-[32px] border border-slate-200 shadow-sm overflow-hidden min-h-[400px]">
@@ -1830,15 +1956,17 @@ export default function AdminDashboardPage() {
                                                         </td>
                                                         <td className="px-8 py-5 text-sm font-bold text-slate-600">{job.company?.name}</td>
                                                         <td className="px-8 py-5">
-                                                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${job.status === 'Approved' ? 'bg-emerald-50 text-emerald-600' :
-                                                                job.status === 'Pending' ? 'bg-amber-50 text-amber-600' :
-                                                                    'bg-red-50 text-red-600'
-                                                                }`}>
+                                                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                                                                job.status === 'Approved' ? 'bg-emerald-50 text-emerald-600' :
+                                                                job.status === 'Pending'  ? 'bg-amber-50 text-amber-600' :
+                                                                job.status === 'Expired'  ? 'bg-slate-100 text-slate-500' :
+                                                                'bg-red-50 text-red-600'
+                                                            }`}>
                                                                 {job.status}
                                                             </span>
                                                         </td>
                                                         <td className="px-8 py-5 text-sm font-bold text-slate-500 tracking-tight">
-                                                            {new Date(job.closingDate).toLocaleDateString('vi-VN')}
+                                                            {job.closingDate ? new Date(job.closingDate).toLocaleDateString('vi-VN') : '—'}
                                                         </td>
                                                         <td className="px-8 py-5 text-center">
                                                             <div className="flex items-center justify-center gap-2">
@@ -1848,19 +1976,20 @@ export default function AdminDashboardPage() {
                                                                             onClick={() => handleApproveJob(job.jobPostId)}
                                                                             className="px-3 py-1.5 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-emerald-700 transition-all"
                                                                         >
-                                                                            Approve
+                                                                            Duyệt
                                                                         </button>
                                                                         <button
-                                                                            onClick={() => handleRejectJob(job.jobPostId)}
+                                                                            onClick={() => openRejectModal(job.jobPostId)}
                                                                             className="px-3 py-1.5 bg-red-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-red-700 transition-all"
                                                                         >
-                                                                            Reject
+                                                                            Từ chối
                                                                         </button>
                                                                     </>
                                                                 )}
                                                                 <button
                                                                     onClick={() => window.open(`/jobs/${job.jobPostId}`, '_blank')}
                                                                     className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                                                                    title="Xem chi tiết"
                                                                 >
                                                                     <LayoutDashboard size={18} />
                                                                 </button>
@@ -1872,12 +2001,45 @@ export default function AdminDashboardPage() {
                                         </table>
                                         {jobs.length === 0 && (
                                             <div className="py-20 text-center">
-                                                <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">No jobs found matching your filters.</p>
+                                                <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">
+                                                    {jobViewMode === 'pending' ? 'Không có tin nào đang chờ duyệt.' : 'Không tìm thấy tin tuyển dụng phù hợp.'}
+                                                </p>
                                             </div>
                                         )}
                                     </div>
                                 )}
                             </div>
+
+                            {/* Modal từ chối tin */}
+                            {showRejectModal && (
+                                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                                    <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md mx-4">
+                                        <h3 className="text-lg font-black text-slate-900 mb-1">Từ chối tin tuyển dụng</h3>
+                                        <p className="text-sm text-slate-400 mb-6">Vui lòng nhập lý do để nhà tuyển dụng biết và chỉnh sửa lại.</p>
+                                        <textarea
+                                            value={rejectReason}
+                                            onChange={(e) => setRejectReason(e.target.value)}
+                                            placeholder="Ví dụ: Nội dung không phù hợp, thiếu thông tin lương..."
+                                            rows={4}
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 resize-none"
+                                        />
+                                        <div className="flex gap-3 mt-6">
+                                            <button
+                                                onClick={() => setShowRejectModal(false)}
+                                                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all"
+                                            >
+                                                Hủy
+                                            </button>
+                                            <button
+                                                onClick={handleConfirmReject}
+                                                className="flex-1 py-2.5 rounded-xl bg-red-600 text-white text-sm font-black hover:bg-red-700 transition-all"
+                                            >
+                                                Xác nhận từ chối
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     ) : ['Categories', 'Locations', 'Skills'].includes(activeTab) ? (
                         <div className="space-y-8 animate-in fade-in duration-500">

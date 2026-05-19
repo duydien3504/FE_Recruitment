@@ -6,6 +6,7 @@ import { useCvStore } from '../../store/cvStore';
 import { SortableCVBlock } from './SortableCVBlock';
 import { AiAssistantModal } from './AiAssistantModal';
 import { TiptapEditor } from './TiptapEditor';
+import { useCvPagination, A4_HEIGHT_PX } from '../../hooks/useCvPagination';
 
 // ─── Layout Presets theo templateId ──────────────────────────────────────────
 // Mỗi template có bộ thuộc tính visual riêng — không chỉ màu mà còn cả bố cục.
@@ -165,12 +166,28 @@ const MainCanvas: React.FC = () => {
     }
   };
 
+  const handleRemoveSection = (sectionId: string) => {
+    const newLayout = {
+      left: columnLayout.left.filter(id => id !== sectionId),
+      right: columnLayout.right.filter(id => id !== sectionId)
+    };
+    setColumnLayout(newLayout);
+  };
+
   const updateItem = (id: string, section: string, field: string, value: string) => {
-     const list = Array.from(cvData[section] || []);
-     const newList = list.map((item: any) => 
+     const raw = cvData[section];
+     const list = Array.isArray(raw) ? [...raw] : [];
+     const newList = list.map((item: any) =>
        item.id === id ? { ...item, [field]: value } : item
      );
      updateSection(section, newList);
+  };
+
+  // Xóa 1 entry (item) khỏi section
+  const removeItem = (itemId: string, section: string) => {
+    const raw = cvData[section];
+    const list = (Array.isArray(raw) ? raw : []).filter((item: any) => item.id !== itemId);
+    updateSection(section, list);
   };
 
 
@@ -197,7 +214,7 @@ const MainCanvas: React.FC = () => {
 
     if (sectionId === 'profile') {
       return (
-        <SortableCVBlock key="profile" id="profile" noDelete>
+        <SortableCVBlock key="profile" id="profile">
           <div className="text-center group/avatar mb-4">
             <div className="w-40 h-40 mx-auto rounded-full border-4 border-white/20 overflow-hidden mb-4 bg-gray-100 flex items-center justify-center relative">
               {cvData.personal?.avatarUrl ? (
@@ -225,7 +242,7 @@ const MainCanvas: React.FC = () => {
 
     if (sectionId === 'contact') {
       return (
-        <SortableCVBlock key="contact" id="contact" noDelete>
+        <SortableCVBlock key="contact" id="contact" onRemove={handleRemoveSection}>
           <div className="mb-4">
             <h4 className="text-[10px] font-bold uppercase tracking-[2px] border-b border-white/10 pb-1 mb-3" style={{ color: themeConfig.primaryColor }}>LIÊN HỆ</h4>
             <div className="space-y-2">
@@ -272,7 +289,7 @@ const MainCanvas: React.FC = () => {
 
     if (sectionId === 'about') {
       return (
-        <SortableCVBlock key="about" id="about" noDelete>
+        <SortableCVBlock key="about" id="about" onRemove={handleRemoveSection}>
           <div className="mb-4">
             <h4 className="text-[10px] font-bold uppercase tracking-[2px] border-b border-white/10 pb-1 mb-3" style={{ color: themeConfig.primaryColor }}>MỤC TIÊU NGHỀ NGHIỆP</h4>
             <TiptapEditor 
@@ -288,7 +305,7 @@ const MainCanvas: React.FC = () => {
 
     if (sectionId === 'skills') {
       return (
-        <SortableCVBlock key="skills" id="skills" noDelete>
+        <SortableCVBlock key="skills" id="skills" onRemove={handleRemoveSection}>
           <div className="mb-4">
             <h4 className="text-[10px] font-bold uppercase tracking-[2px] border-b border-white/10 pb-1 mb-3" style={{ color: themeConfig.primaryColor }}>KỸ NĂNG</h4>
             <TiptapEditor 
@@ -303,7 +320,8 @@ const MainCanvas: React.FC = () => {
     }
 
     // Dynamic Sections (Education, Experience, etc.)
-    const items = cvData[sectionId] || [];
+    const rawItems = cvData[sectionId];
+    const items = Array.isArray(rawItems) ? rawItems : [];
     // Sidebar sáng (Marketing/IT Minimal) dùng chữ đen
     const isSidebarLight = preset.sidebarBg.startsWith('#e') || preset.sidebarBg.startsWith('#f');
     const textColor = isDark ? (isSidebarLight ? 'text-gray-800' : 'text-white') : 'text-gray-800';
@@ -388,12 +406,20 @@ const MainCanvas: React.FC = () => {
     };
 
     return (
-      <SortableCVBlock key={sectionId} id={sectionId}>
+      <SortableCVBlock key={sectionId} id={sectionId} onRemove={handleRemoveSection}>
         <section className={isDark ? 'mb-4' : 'mb-0'}>
           {renderSectionHeader()}
           <SortableContext items={items.map((i: any) => i.id)} strategy={verticalListSortingStrategy}>
             {items.map((item: any) => (
-              <div key={item.id} className={`mb-4 group relative ${isDark ? '' : 'p-3 hover:bg-gray-50 rounded-xl transition-all border border-transparent hover:border-gray-100'}`}>
+              <div key={item.id} className={`mb-4 group/item relative ${isDark ? '' : 'p-3 hover:bg-gray-50 rounded-xl transition-all border border-transparent hover:border-gray-100'}`}>
+                {/* Nút xóa entry - hiện khi hover */}
+                <button
+                  onClick={() => removeItem(item.id, sectionId)}
+                  className="absolute -right-2 -top-2 z-20 opacity-0 group-hover/item:opacity-100 w-5 h-5 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white rounded-full shadow-md transition-all duration-150 hover:scale-110"
+                  title="Xóa mục này"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
                 <div className={`${isDark ? 'flex flex-col' : 'flex justify-between items-start'} mb-1`}>
                   <div className="flex-1 min-w-0">
                     <TiptapEditor 
@@ -441,6 +467,16 @@ const MainCanvas: React.FC = () => {
     );
   };
 
+  // ── Phân trang ─────────────────────────────────────────────────────────────
+  const { pages, measureRef } = useCvPagination(columnLayout.left, columnLayout.right);
+
+  // Wrapper để đo chiều cao của từng section block
+  const MeasuredSection = ({ sectionId, isDark }: { sectionId: string; isDark: boolean }) => (
+    <div ref={measureRef(sectionId)}>
+      {renderSection(sectionId, isDark)}
+    </div>
+  );
+
   return (
     <div className="flex-1 min-w-[1100px] shrink-0 bg-gray-200 overflow-y-auto flex flex-col items-center py-6 px-4 scroll-smooth relative">
        {/* Zoom Controls */}
@@ -458,88 +494,138 @@ const MainCanvas: React.FC = () => {
           </button>
        </div>
 
-       {/* Bản CV Chính */}
-       <div 
-         id="cv-paper"
-         className={`bg-white shadow-2xl relative html-to-pdf-target transition-all duration-300 overflow-hidden origin-top`}
-         style={{ 
-           width: '270mm', 
-           minHeight: '297mm',
-           fontFamily: themeConfig.fontFamily,
-           lineHeight: themeConfig.lineSpacing,
-           letterSpacing: `${themeConfig.charSpacing}px`,
-           transform: `scale(${zoom / 100})`,
-           marginBottom: `${(zoom - 100) * 3}px`,
-           fontSize: `${dynamicFontSize}px`
-         }}
-       >
-          <DndContext 
-            collisionDetection={closestCenter} 
-            onDragOver={handleDragOver}
-            onDragEnd={handleDragEnd}
-          >
-            <div className={`flex flex-col min-h-[297mm]`}>
-               
-               {/* 1. HERO TOP SECTION (Chỉ hiện nếu layoutStyle là hero-top) */}
-               {preset.layoutStyle === 'hero-top' && (
-                 <div className="w-full p-10 flex items-center space-x-10" style={{ backgroundColor: themeConfig.primaryColor }}>
-                    <div className="w-40 h-40 shrink-0 rounded-full border-8 border-white/20 overflow-hidden bg-white/10 flex items-center justify-center">
-                       {cvData.personal?.avatarUrl ? (
-                           <img src={cvData.personal.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                       ) : (
-                           <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                       )}
-                    </div>
-                    <div className="flex-1">
-                       <TiptapEditor 
-                          value={cvData.personal?.fullName || ''} 
-                          onChange={(val) => updateSection('personal', { ...cvData.personal, fullName: val })}
-                          editorClassName="text-5xl font-black uppercase text-white tracking-widest"
-                          className="min-h-0"
-                       />
-                       <TiptapEditor 
-                          value={cvData.personal?.title || ''} 
-                          onChange={(val) => updateSection('personal', { ...cvData.personal, title: val })}
-                          editorClassName="text-xl font-medium text-white/80 mt-2 uppercase tracking-[4px]"
-                          className="min-h-0"
-                       />
-                    </div>
-                 </div>
-               )}
+       {/* Page count badge */}
+       {pages.length > 1 && (
+         <div className="mb-4 flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 text-xs font-semibold px-4 py-2 rounded-full shadow-sm">
+           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+           CV của bạn có {pages.length} trang — các section tự động phân trang
+         </div>
+       )}
 
-               <div className={`flex flex-1 ${preset.layoutStyle === 'right-sidebar' ? 'flex-row-reverse' : 'flex-row'}`}>
-                  {/* SIDEBAR COL */}
-                  <div 
-                    className="flex-shrink-0 p-8 transition-colors duration-500"
-                    style={{ 
-                      backgroundColor: preset.sidebarBg,
-                      width: preset.sidebarWidth,
-                      color: (preset.sidebarBg.startsWith('#e') || preset.sidebarBg.startsWith('#f')) ? '#1a1a1a' : '#ffffff'
-                    }}
-                  >
-                     <SortableContext items={columnLayout.left} strategy={verticalListSortingStrategy}>
-                        {columnLayout.left.map((sectionId) => {
-                          // Nếu ở mode Hero-top, bỏ qua block Profile vì đã render ở banner
-                          if (preset.layoutStyle === 'hero-top' && sectionId === 'profile') return null;
-                          return renderSection(sectionId, true);
-                        })}
-                        {columnLayout.left.length === 0 && <div className="h-40 border-2 border-dashed border-white/10 rounded-xl flex items-center justify-center text-white/20 text-xs text-center border-spacing-4">Cột Sidebar</div>}
-                     </SortableContext>
-                  </div>
-
-                  {/* MAIN CONTENT COL */}
-                  <div className={`flex-1 ${preset.mainPadding} space-y-10 transition-colors duration-500`} style={{ backgroundColor: preset.mainBg }}>
-                     <SortableContext items={columnLayout.right} strategy={verticalListSortingStrategy}>
-                        {columnLayout.right.map((sectionId) => renderSection(sectionId, false))}
-                        {columnLayout.right.length === 0 && <div className="h-40 border-2 border-dashed border-gray-100 rounded-xl flex items-center justify-center text-gray-300 text-xs text-center border-spacing-4">Cột Chính Nội Dung</div>}
-                     </SortableContext>
-                  </div>
-               </div>
-            </div>
-          </DndContext>
+       {/* ── Toàn bộ section (INVISIBLE - chỉ để đo chiều cao) ── */}
+       <div style={{ position: 'absolute', visibility: 'hidden', pointerEvents: 'none', top: 0, left: 0, width: '270mm', zIndex: -1 }}>
+         <div style={{ backgroundColor: preset.sidebarBg, width: preset.sidebarWidth, padding: '32px' }}>
+           {columnLayout.left.map(sid => (
+             <div key={sid} ref={measureRef(sid)}>{renderSection(sid, true)}</div>
+           ))}
+         </div>
+         <div style={{ flex: 1, padding: '48px' }}>
+           {columnLayout.right.map(sid => (
+             <div key={sid} ref={measureRef(sid)}>{renderSection(sid, false)}</div>
+           ))}
+         </div>
        </div>
 
-       <AiAssistantModal 
+       {/* ── Render từng trang A4 ── */}
+       <DndContext
+         collisionDetection={closestCenter}
+         onDragOver={handleDragOver}
+         onDragEnd={handleDragEnd}
+       >
+         {pages.map((page, pageIndex) => (
+           <div key={pageIndex} className="relative mb-2">
+             {/* Page Label */}
+             {pages.length > 1 && (
+               <div className="absolute -top-7 left-0 right-0 flex items-center justify-center gap-3">
+                 <div className="flex-1 h-px bg-gray-300" />
+                 <span className="text-[11px] font-semibold text-gray-400 bg-gray-200 px-3 py-0.5 rounded-full whitespace-nowrap">
+                   Trang {pageIndex + 1} / {pages.length}
+                 </span>
+                 <div className="flex-1 h-px bg-gray-300" />
+               </div>
+             )}
+
+             {/* Trang A4 */}
+             <div
+               id={pageIndex === 0 ? 'cv-paper' : `cv-paper-${pageIndex + 1}`}
+               className="bg-white shadow-2xl relative html-to-pdf-target transition-all duration-300 overflow-hidden origin-top"
+               style={{
+                 width: '270mm',
+                 minHeight: `${A4_HEIGHT_PX}px`,
+                 fontFamily: themeConfig.fontFamily,
+                 lineHeight: themeConfig.lineSpacing,
+                 letterSpacing: `${themeConfig.charSpacing}px`,
+                 transform: `scale(${zoom / 100})`,
+                 marginBottom: zoom !== 100 ? `${(zoom - 100) * 3 * (pageIndex + 1)}px` : '0',
+                 fontSize: `${dynamicFontSize}px`,
+               }}
+             >
+               <div className="flex flex-col" style={{ minHeight: `${A4_HEIGHT_PX}px` }}>
+
+                 {/* HERO TOP (chỉ trang đầu) */}
+                 {pageIndex === 0 && preset.layoutStyle === 'hero-top' && (
+                   <div className="w-full p-10 flex items-center space-x-10" style={{ backgroundColor: themeConfig.primaryColor }}>
+                     <div className="w-40 h-40 shrink-0 rounded-full border-8 border-white/20 overflow-hidden bg-white/10 flex items-center justify-center">
+                       {cvData.personal?.avatarUrl ? (
+                         <img src={cvData.personal.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                       ) : (
+                         <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                       )}
+                     </div>
+                     <div className="flex-1">
+                       <TiptapEditor value={cvData.personal?.fullName || ''} onChange={(val) => updateSection('personal', { ...cvData.personal, fullName: val })} editorClassName="text-5xl font-black uppercase text-white tracking-widest" className="min-h-0" />
+                       <TiptapEditor value={cvData.personal?.title || ''} onChange={(val) => updateSection('personal', { ...cvData.personal, title: val })} editorClassName="text-xl font-medium text-white/80 mt-2 uppercase tracking-[4px]" className="min-h-0" />
+                     </div>
+                   </div>
+                 )}
+
+                 <div className={`flex flex-1 ${preset.layoutStyle === 'right-sidebar' ? 'flex-row-reverse' : 'flex-row'}`}>
+                   {/* SIDEBAR COL */}
+                   <div
+                     className="flex-shrink-0 p-8 transition-colors duration-500"
+                     style={{
+                       backgroundColor: preset.sidebarBg,
+                       width: preset.sidebarWidth,
+                       color: (preset.sidebarBg.startsWith('#e') || preset.sidebarBg.startsWith('#f')) ? '#1a1a1a' : '#ffffff',
+                       minHeight: `${A4_HEIGHT_PX}px`,
+                     }}
+                   >
+                     <SortableContext items={columnLayout.left} strategy={verticalListSortingStrategy}>
+                       {page.leftSections.map((sectionId) => {
+                         if (preset.layoutStyle === 'hero-top' && sectionId === 'profile' && pageIndex === 0) return null;
+                         return <MeasuredSection key={sectionId} sectionId={sectionId} isDark={true} />;
+                       })}
+                       {page.leftSections.length === 0 && pageIndex === 0 && (
+                         <div className="h-40 border-2 border-dashed border-white/10 rounded-xl flex items-center justify-center text-white/20 text-xs text-center">Cột Sidebar</div>
+                       )}
+                     </SortableContext>
+                   </div>
+
+                   {/* MAIN CONTENT COL */}
+                   <div
+                     className={`flex-1 ${preset.mainPadding} space-y-10 transition-colors duration-500`}
+                     style={{ backgroundColor: preset.mainBg, minHeight: `${A4_HEIGHT_PX}px` }}
+                   >
+                     <SortableContext items={columnLayout.right} strategy={verticalListSortingStrategy}>
+                       {page.rightSections.map((sectionId) => (
+                         <MeasuredSection key={sectionId} sectionId={sectionId} isDark={false} />
+                       ))}
+                       {page.rightSections.length === 0 && pageIndex === 0 && (
+                         <div className="h-40 border-2 border-dashed border-gray-100 rounded-xl flex items-center justify-center text-gray-300 text-xs text-center">Cột Chính Nội Dung</div>
+                       )}
+                     </SortableContext>
+                   </div>
+                 </div>
+               </div>
+             </div>
+
+             {/* Đường kẻ phân trang giữa các trang */}
+             {pageIndex < pages.length - 1 && (
+               <div className="mt-2 mx-auto flex items-center gap-3" style={{ width: '270mm' }}>
+                 <div className="flex-1 h-px bg-red-300 border-dashed border-t-2 border-red-300" />
+                 <span className="text-[10px] text-red-400 font-semibold whitespace-nowrap flex items-center gap-1">
+                   <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14"/></svg>
+                   Ngắt trang
+                   <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14"/></svg>
+                 </span>
+                 <div className="flex-1 h-px border-dashed border-t-2 border-red-300" />
+               </div>
+             )}
+           </div>
+         ))}
+       </DndContext>
+
+       <AiAssistantModal
           isOpen={aiModalConfig.isOpen}
           section={aiModalConfig.section}
           currentText={aiModalConfig.currentText}

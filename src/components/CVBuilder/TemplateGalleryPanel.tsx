@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { CvService } from '../../services/cv.service';
 import { useCvStore } from '../../store/cvStore';
 import type { CvTemplate, TemplateCategory } from '../../types/cv.types';
+import type { CvData, ColumnLayout, ThemeConfig } from '../../store/cvStore';
 
 // ─── Fallback thumbnail (plain colored placeholder) ────────────────────────
 const PlaceholderThumbnail: React.FC<{ name: string; color: string }> = ({ name, color }) => (
@@ -23,27 +24,27 @@ const PlaceholderThumbnail: React.FC<{ name: string; color: string }> = ({ name,
 
 // ─── Category tab list ──────────────────────────────────────────────────────
 const CATEGORY_TABS: { id: string; label: string }[] = [
-  { id: 'all',        label: 'Tất cả'     },
-  { id: 'IT',         label: 'IT'          },
-  { id: 'Marketing',  label: 'Marketing'   },
-  { id: 'Business',   label: 'Kinh tế'    },
-  { id: 'Social',     label: 'Social'      },
-  { id: 'Finance',    label: 'Finance'     },
-  { id: 'Design',     label: 'Design'      },
-  { id: 'General',    label: 'Chung'       },
+  { id: 'all', label: 'Tất cả' },
+  { id: 'IT', label: 'IT' },
+  { id: 'Marketing', label: 'Marketing' },
+  { id: 'Business', label: 'Kinh tế' },
+  { id: 'Social', label: 'Social' },
+  { id: 'Finance', label: 'Finance' },
+  { id: 'Design', label: 'Design' },
+  { id: 'General', label: 'Chung' },
 ];
 
 // ─── Category badge colour map ──────────────────────────────────────────────
 const CATEGORY_COLOR: Record<string, string> = {
-  IT:        '#6366f1',
+  IT: '#6366f1',
   Marketing: '#f59e0b',
-  Business:  '#0ea5e9',
-  Social:    '#7c3aed',
-  Finance:   '#10b981',
-  Design:    '#ec4899',
+  Business: '#0ea5e9',
+  Social: '#7c3aed',
+  Finance: '#10b981',
+  Design: '#ec4899',
   Education: '#8b5cf6',
-  Healthcare:'#ef4444',
-  General:   '#64748b',
+  Healthcare: '#ef4444',
+  General: '#64748b',
 };
 
 // ─── Skeleton card ──────────────────────────────────────────────────────────
@@ -59,15 +60,16 @@ const SkeletonCard: React.FC = () => (
 
 // ─── Main Component ─────────────────────────────────────────────────────────
 const TemplateGalleryPanel: React.FC = () => {
-  const { templateId, setTemplateId, updateTheme } = useCvStore();
+  const { templateId, setTemplateId, updateTheme, setCvData, setColumnLayout } = useCvStore();
 
-  const [templates, setTemplates]         = useState<CvTemplate[]>([]);
-  const [filteredList, setFilteredList]   = useState<CvTemplate[]>([]);
+  const [templates, setTemplates] = useState<CvTemplate[]>([]);
+  const [filteredList, setFilteredList] = useState<CvTemplate[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>('all');
-  const [isLoading, setIsLoading]         = useState(false);
-  const [error, setError]                 = useState<string | null>(null);
-  const [hoveredId, setHoveredId]         = useState<string | null>(null);
-  const [isApplying, setIsApplying]       = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [isApplying, setIsApplying] = useState<string | null>(null);
+  const [sampleLoadedId, setSampleLoadedId] = useState<string | null>(null);
 
   // ── Fetch all templates once on mount
   const fetchTemplates = useCallback(async () => {
@@ -98,26 +100,72 @@ const TemplateGalleryPanel: React.FC = () => {
     }
   }, [activeCategory, templates]);
 
-  // ── Apply template selection
+  // ── Apply template selection + load complete sample CV data
   const handleSelectTemplate = async (template: CvTemplate) => {
     if (isApplying) return;
     setIsApplying(template.id);
+    setSampleLoadedId(null);
     try {
-      // 1. Update store with new templateId
+      // 1. Apply templateId + defaultConfig theme
       setTemplateId(template.id);
-      // 2. Apply defaultConfig to themeConfig (primaryColor + fontFamily)
       if (template.defaultConfig) {
         updateTheme({
           primaryColor: template.defaultConfig.primaryColor,
-          fontFamily:   template.defaultConfig.fontFamily,
+          fontFamily: template.defaultConfig.fontFamily,
           ...(template.defaultConfig.layoutMode
             ? { layoutMode: template.defaultConfig.layoutMode }
             : {}),
         });
       }
+
+      // 2. Fetch complete sample CV data for this template's industry
+      try {
+        const industry = template.category && template.category !== 'all'
+          ? template.category
+          : undefined;
+        const res = await CvService.getSamples(industry);
+
+        // Normalize: API có thể trả { data: [...] } hoặc array trực tiếp
+        const samples: any[] = Array.isArray(res)
+          ? res
+          : Array.isArray(res?.data)
+            ? res.data
+            : res?.data
+              ? [res.data]
+              : [];
+
+        // Ưu tiên sample khớp templateId, fallback sample đầu tiên
+        const sample = samples.find((s: any) =>
+          s.templateId === template.id || s.template_id === template.id
+        ) ?? samples[0];
+
+        if (sample) {
+          if (sample.cvData) setCvData(sample.cvData as CvData);
+
+          if (sample.columnLayout) {
+            const layout = sample.columnLayout as ColumnLayout;
+            // Đảm bảo 'profile' luôn có trong left column (avatar sẽ bị ẩn nếu thiếu)
+            const profileInLeft = layout.left?.includes('profile');
+            const profileInRight = layout.right?.includes('profile');
+            if (!profileInLeft && !profileInRight) {
+              setColumnLayout({
+                left: ['profile', ...(layout.left ?? [])],
+                right: layout.right ?? [],
+              });
+            } else {
+              setColumnLayout(layout);
+            }
+          }
+
+          if (sample.themeConfig) updateTheme(sample.themeConfig as Partial<ThemeConfig>);
+          setSampleLoadedId(template.id);
+        }
+      } catch (sampleErr) {
+        // Không load được sample → vẫn giữ style mẫu đã chọn, bỏ qua lỗi
+        console.warn('[TemplateGallery] Không tải được mẫu CV hoàn chỉnh:', sampleErr);
+      }
     } finally {
-      // Small delay gives user visual feedback
-      setTimeout(() => setIsApplying(null), 600);
+      setTimeout(() => setIsApplying(null), 800);
     }
   };
 
@@ -125,12 +173,12 @@ const TemplateGalleryPanel: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full" id="template-gallery-panel">
-      
+
       {/* ── Header ────────────────────────────────────────────────── */}
       <div className="mb-4">
         <p className="text-[11px] text-gray-400 leading-relaxed">
           Chọn một mẫu CV phù hợp với ngành nghề của bạn.<br />
-          Màu chủ đề và font sẽ được cập nhật tự động.
+          Nội dung mẫu hoàn chỉnh sẽ được tự động điền vào CV.
         </p>
       </div>
 
@@ -141,11 +189,10 @@ const TemplateGalleryPanel: React.FC = () => {
             key={tab.id}
             id={`template-tab-${tab.id}`}
             onClick={() => setActiveCategory(tab.id)}
-            className={`px-2.5 py-1 rounded-full text-[10px] font-semibold transition-all border ${
-              activeCategory === tab.id
+            className={`px-2.5 py-1 rounded-full text-[10px] font-semibold transition-all border ${activeCategory === tab.id
                 ? 'bg-primary text-white border-primary shadow-sm'
                 : 'bg-white text-gray-500 border-gray-200 hover:border-primary/40 hover:text-primary'
-            }`}
+              }`}
           >
             {tab.label}
           </button>
@@ -164,7 +211,7 @@ const TemplateGalleryPanel: React.FC = () => {
         <div className="flex flex-col items-center gap-3 py-8 text-center">
           <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center text-red-400">
             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/>
+              <circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" />
             </svg>
           </div>
           <p className="text-xs text-red-500">{error}</p>
@@ -191,7 +238,7 @@ const TemplateGalleryPanel: React.FC = () => {
             <div className="col-span-2 flex flex-col items-center gap-3 py-10 text-center">
               <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center text-gray-300">
                 <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/>
+                  <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" />
                 </svg>
               </div>
               <p className="text-xs text-gray-400">Chưa có mẫu CV cho ngành này.</p>
@@ -206,11 +253,10 @@ const TemplateGalleryPanel: React.FC = () => {
                 <div
                   key={template.id}
                   id={`template-card-${template.id}`}
-                  className={`relative rounded-xl border-2 overflow-hidden cursor-pointer transition-all duration-200 bg-white group shadow-sm hover:shadow-md ${
-                    isSelected
+                  className={`relative rounded-xl border-2 overflow-hidden cursor-pointer transition-all duration-200 bg-white group shadow-sm hover:shadow-md ${isSelected
                       ? 'border-primary shadow-primary/20 shadow-md'
                       : 'border-gray-100 hover:border-primary/50'
-                  }`}
+                    }`}
                   onMouseEnter={() => setHoveredId(template.id)}
                   onMouseLeave={() => setHoveredId(null)}
                   onClick={() => handleSelectTemplate(template)}
@@ -237,11 +283,13 @@ const TemplateGalleryPanel: React.FC = () => {
                     )}
 
                     {/* Hover overlay */}
-                    <div className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity duration-200 ${
-                      hoveredId === template.id && !isSelected ? 'opacity-100' : 'opacity-0'
-                    }`}>
+                    <div className={`absolute inset-0 bg-black/40 flex flex-col items-center justify-center gap-1.5 transition-opacity duration-200 ${hoveredId === template.id && !isSelected ? 'opacity-100' : 'opacity-0'
+                      }`}>
                       <span className="text-white text-[10px] font-bold px-3 py-1.5 bg-primary rounded-full shadow-lg">
                         Dùng mẫu này
+                      </span>
+                      <span className="text-white/80 text-[9px] px-2 text-center leading-tight">
+                        Tự động điền nội dung mẫu
                       </span>
                     </div>
 
@@ -249,18 +297,29 @@ const TemplateGalleryPanel: React.FC = () => {
                     {isSelected && (
                       <div className="absolute top-1.5 right-1.5 w-6 h-6 bg-primary rounded-full flex items-center justify-center shadow-sm">
                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="20 6 9 17 4 12"/>
+                          <polyline points="20 6 9 17 4 12" />
                         </svg>
                       </div>
                     )}
 
                     {/* Applying spinner */}
                     {isBeingApplied && (
-                      <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
+                      <div className="absolute inset-0 bg-white/70 flex flex-col items-center justify-center gap-2">
                         <svg className="animate-spin h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                         </svg>
+                        <span className="text-[9px] text-primary font-semibold">Đang tải mẫu...</span>
+                      </div>
+                    )}
+
+                    {/* Sample loaded badge */}
+                    {sampleLoadedId === template.id && !isBeingApplied && (
+                      <div className="absolute bottom-1.5 left-1.5 flex items-center gap-0.5 bg-green-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                        Mẫu hoàn chỉnh
                       </div>
                     )}
                   </div>

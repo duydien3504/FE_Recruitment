@@ -389,9 +389,11 @@ export default function ProfilePage() {
                 body: JSON.stringify(companyData),
             });
 
+            const data = await response.json();
+
             if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.message || 'Đăng ký doanh nghiệp thất bại');
+                const errorMessage = data.error?.message || data.message || 'Đăng ký doanh nghiệp thất bại';
+                throw new Error(errorMessage);
             }
 
             setCompanyRegSuccess(true);
@@ -402,11 +404,23 @@ export default function ProfilePage() {
                 phone: ''
             });
 
-            // Close modal after 3 seconds
-            setTimeout(() => {
-                setShowCompanyRegModal(false);
-                setCompanyRegSuccess(false);
-            }, 3000);
+            // Backend MoMo trả về: { message: "...", data: { paymentUrl: "...", transactionId: ... } }
+            const paymentUrl =
+                data.data?.paymentUrl ||
+                data.paymentUrl ||
+                (typeof data.data === 'string' ? data.data : null);
+
+            if (paymentUrl && typeof paymentUrl === 'string' && paymentUrl.startsWith('http')) {
+                toast.success(data.message || 'Đang chuyển hướng sang cổng thanh toán MoMo...');
+                setTimeout(() => {
+                    window.location.href = paymentUrl;
+                }, 1500);
+            } else {
+                setTimeout(() => {
+                    setShowCompanyRegModal(false);
+                    setCompanyRegSuccess(false);
+                }, 3000);
+            }
         } catch (err: any) {
             setCompanyRegError(err.message || 'Đã xảy ra lỗi khi đăng ký doanh nghiệp');
         } finally {
