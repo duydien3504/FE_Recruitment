@@ -268,7 +268,25 @@ export const CvService = {
     const response = await apiClient.post('/cv-builder/export', p, {
       responseType: 'blob'
     });
-    return response.data;
+    const blob = response.data as Blob;
+
+    // BE có thể trả JSON { downloadUrl } thay vì PDF trực tiếp
+    if (blob.type.includes('json') || blob.size < 4096) {
+      try {
+        const text = await blob.text();
+        const json = JSON.parse(text) as { downloadUrl?: string; data?: { downloadUrl?: string } };
+        const downloadUrl = json.downloadUrl ?? json.data?.downloadUrl;
+        if (downloadUrl) {
+          const fileRes = await fetch(downloadUrl);
+          if (!fileRes.ok) throw new Error('Không tải được file PDF từ downloadUrl');
+          return await fileRes.blob();
+        }
+      } catch {
+        // Không phải JSON — xử lý như PDF blob
+      }
+    }
+
+    return blob;
   }
 };
 

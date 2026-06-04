@@ -1,8 +1,15 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { CvService } from '../../services/cv.service';
+import { toast } from 'sonner';
+import { CvService, formatCvApiError, resolveCvTemplateIdForSave } from '../../services/cv.service';
 import { useCvStore } from '../../store/cvStore';
-import type { CvTemplate, TemplateCategory } from '../../types/cv.types';
-import type { CvData, ColumnLayout, ThemeConfig } from '../../store/cvStore';
+import type { CvTemplate } from '../../types/cv.types';
+import type { ThemeConfig } from '../../store/cvStore';
+import {
+  parseSamplesResponse,
+  mapSampleToCvData,
+  mapSampleTheme,
+  buildColumnLayoutFromSample,
+} from '../../utils/cvSampleUtils';
 
 // ─── Fallback thumbnail (plain colored placeholder) ────────────────────────
 const PlaceholderThumbnail: React.FC<{ name: string; color: string }> = ({ name, color }) => (
@@ -47,6 +54,50 @@ const CATEGORY_COLOR: Record<string, string> = {
   General: '#64748b',
 };
 
+// ─── Google Fonts map ────────────────────────────────────────────────────────
+const GOOGLE_FONTS: Record<string, string> = {
+  'Inter': 'Inter:wght@400;500;600;700',
+  'Roboto': 'Roboto:wght@400;500;700',
+  'Montserrat': 'Montserrat:wght@400;500;600;700',
+  'Lato': 'Lato:wght@400;700',
+  'Merriweather': 'Merriweather:wght@400;700',
+  'Playfair Display': 'Playfair+Display:wght@400;600;700',
+  'Fira Code': 'Fira+Code:wght@400;500;600',
+  'Be Vietnam Pro': 'Be+Vietnam+Pro:wght@400;500;600;700',
+  'Open Sans': 'Open+Sans:wght@400;500;600;700',
+  'Poppins': 'Poppins:wght@400;500;600;700',
+  'DM Sans': 'DM+Sans:wght@400;500;700',
+  'Plus Jakarta Sans': 'Plus+Jakarta+Sans:wght@400;500;600;700',
+  'Source Sans 3': 'Source+Sans+3:wght@400;600;700',
+  'Work Sans': 'Work+Sans:wght@400;500;600;700',
+  'Barlow': 'Barlow:wght@400;500;600;700',
+  'Raleway': 'Raleway:wght@400;500;600;700',
+  'Nunito': 'Nunito:wght@400;500;600;700',
+  'Outfit': 'Outfit:wght@400;500;600;700',
+  'Lexend': 'Lexend:wght@400;500;600;700',
+  'Josefin Sans': 'Josefin+Sans:wght@400;600;700',
+  'Space Grotesk': 'Space+Grotesk:wght@400;500;600;700',
+  'Sora': 'Sora:wght@400;500;600;700',
+  'Lora': 'Lora:wght@400;600;700',
+  'Source Serif 4': 'Source+Serif+4:wght@400;600;700',
+  'EB Garamond': 'EB+Garamond:wght@400;500;600;700',
+  'Libre Baskerville': 'Libre+Baskerville:wght@400;700',
+  'Crimson Text': 'Crimson+Text:wght@400;600;700',
+};
+
+/** Inject Google Fonts <link> nếu chưa có */
+function loadGoogleFont(fontFamily: string) {
+  const slug = GOOGLE_FONTS[fontFamily];
+  if (!slug) return;
+  const id = `gfont-${fontFamily.replace(/\s+/g, '-').toLowerCase()}`;
+  if (document.getElementById(id)) return;
+  const link = document.createElement('link');
+  link.id = id;
+  link.rel = 'stylesheet';
+  link.href = `https://fonts.googleapis.com/css2?family=${slug}&display=swap`;
+  document.head.appendChild(link);
+}
+
 // ─── Skeleton card ──────────────────────────────────────────────────────────
 const SkeletonCard: React.FC = () => (
   <div className="animate-pulse rounded-xl border border-gray-100 overflow-hidden bg-white shadow-sm">
@@ -58,9 +109,47 @@ const SkeletonCard: React.FC = () => (
   </div>
 );
 
+// ─── Confirmation Dialog ─────────────────────────────────────────────────────
+interface ConfirmDialogProps {
+  templateName: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+const ConfirmDialog: React.FC<ConfirmDialogProps> = ({ templateName, onConfirm, onCancel }) => (
+  <div className="fixed inset-0 z-[200] flex items-center justify-center">
+    <div className="absolute inset-0 bg-black/40" onClick={onCancel} />
+    <div className="relative bg-white rounded-2xl shadow-2xl p-6 w-80 mx-4 animate-in fade-in zoom-in-95 duration-200">
+      <div className="w-12 h-12 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-4">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+          <path d="M12 9v4" /><path d="M12 17h.01" />
+        </svg>
+      </div>
+      <h3 className="text-sm font-bold text-gray-800 text-center mb-2">Điền nội dung mẫu?</h3>
+      <p className="text-[11px] text-gray-500 text-center leading-relaxed mb-5">
+        CV của bạn đang có nội dung. Dùng mẫu <span className="font-semibold text-gray-700">"{templateName}"</span> sẽ <span className="text-red-500 font-semibold">ghi đè toàn bộ</span> nội dung hiện tại.
+      </p>
+      <div className="flex gap-2">
+        <button
+          onClick={onCancel}
+          className="flex-1 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-all"
+        >
+          Huỷ
+        </button>
+        <button
+          onClick={onConfirm}
+          className="flex-1 py-2.5 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-all shadow-sm"
+        >
+          Đồng ý, ghi đè
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
 // ─── Main Component ─────────────────────────────────────────────────────────
 const TemplateGalleryPanel: React.FC = () => {
-  const { templateId, setTemplateId, updateTheme, setCvData, setColumnLayout } = useCvStore();
+  const { templateId, setTemplateId, updateTheme, setCvData, setColumnLayout, cvData, themeConfig } = useCvStore();
 
   const [templates, setTemplates] = useState<CvTemplate[]>([]);
   const [filteredList, setFilteredList] = useState<CvTemplate[]>([]);
@@ -70,16 +159,28 @@ const TemplateGalleryPanel: React.FC = () => {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [isApplying, setIsApplying] = useState<string | null>(null);
   const [sampleLoadedId, setSampleLoadedId] = useState<string | null>(null);
+  const [confirmTemplate, setConfirmTemplate] = useState<CvTemplate | null>(null);
+
+  // ── Load Google Font khi fontFamily thay đổi
+  useEffect(() => {
+    if (themeConfig.fontFamily) {
+      loadGoogleFont(themeConfig.fontFamily);
+    }
+  }, [themeConfig.fontFamily]);
 
   // ── Fetch all templates once on mount
   const fetchTemplates = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await CvService.getTemplates(); // no category → get all active
+      const res = await CvService.getTemplates();
       if (res.success && Array.isArray(res.data)) {
-        setTemplates(res.data);
-        setFilteredList(res.data);
+        // Deduplicate by template.id in case API returns duplicates
+        const seen = new Map<string, CvTemplate>();
+        (res.data as CvTemplate[]).forEach((t: CvTemplate) => seen.set(t.id, t));
+        const unique = Array.from(seen.values());
+        setTemplates(unique);
+        setFilteredList(unique);
       }
     } catch (err: any) {
       console.error('[TemplateGallery] Fetch error:', err);
@@ -100,86 +201,118 @@ const TemplateGalleryPanel: React.FC = () => {
     }
   }, [activeCategory, templates]);
 
-  // ── Apply template selection + load complete sample CV data
-  const handleSelectTemplate = async (template: CvTemplate) => {
+  // ── Chọn template → CHỈ áp dụng templateId + themeConfig, KHÔNG điền cvData
+  const handleSelectTemplate = (template: CvTemplate) => {
+    setTemplateId(template.id);
+    if (template.defaultConfig) {
+      updateTheme({
+        primaryColor: template.defaultConfig.primaryColor,
+        fontFamily: template.defaultConfig.fontFamily,
+        ...(template.defaultConfig.layoutMode
+          ? { layoutMode: template.defaultConfig.layoutMode }
+          : {}),
+      });
+      // Load Google Font cho font mới
+      if (template.defaultConfig.fontFamily) {
+        loadGoogleFont(template.defaultConfig.fontFamily);
+      }
+    }
+  };
+
+  // ── Kiểm tra xem user có dữ liệu CV không
+  const hasCvData = (): boolean => {
+    if (!cvData) return false;
+    return Object.values(cvData).some(v => {
+      if (Array.isArray(v)) return v.length > 0;
+      if (typeof v === 'object' && v !== null) return Object.keys(v).length > 0;
+      return v !== undefined && v !== null && v !== '';
+    });
+  };
+
+  // ── Bấm "Dùng mẫu này" → gọi /samples để điền cvData
+  const handleUseSample = (template: CvTemplate) => {
     if (isApplying) return;
+    // Nếu user đang có dữ liệu → hỏi xác nhận trước
+    if (hasCvData()) {
+      setConfirmTemplate(template);
+      return;
+    }
+    applySample(template);
+  };
+
+  // ── Thực sự gọi API /samples và điền cvData
+  const applySample = async (template: CvTemplate) => {
+    setConfirmTemplate(null);
     setIsApplying(template.id);
     setSampleLoadedId(null);
     try {
-      // 1. Apply templateId + defaultConfig theme
-      setTemplateId(template.id);
-      if (template.defaultConfig) {
-        updateTheme({
-          primaryColor: template.defaultConfig.primaryColor,
-          fontFamily: template.defaultConfig.fontFamily,
-          ...(template.defaultConfig.layoutMode
-            ? { layoutMode: template.defaultConfig.layoutMode }
-            : {}),
+      const industry = template.category && template.category !== 'all'
+        ? template.category.toLowerCase()
+        : undefined;
+      const res = await CvService.getSamples(industry);
+      const { samples } = parseSamplesResponse(res);
+
+      const sample = samples.find(s => s.templateId === template.id) ?? samples[0];
+
+      if (sample) {
+        const existingAvatar = (cvData as { personal?: { avatarUrl?: string } })?.personal?.avatarUrl || '';
+        const mergedCvData = mapSampleToCvData(sample, existingAvatar);
+        const themePatch = mapSampleTheme(sample.themeConfig);
+        const layout = buildColumnLayoutFromSample(sample);
+
+        setCvData(mergedCvData);
+        updateTheme(themePatch as Partial<ThemeConfig>);
+        setColumnLayout(layout);
+        setTemplateId(sample.templateId);
+
+        if (sample.themeConfig?.fontFamily) loadGoogleFont(sample.themeConfig.fontFamily);
+
+        const resolved = await resolveCvTemplateIdForSave(sample.templateId);
+        await CvService.updateDraft({
+          cvData: mergedCvData,
+          themeConfig: { ...themeConfig, ...themePatch },
+          templateId: resolved,
+          columnLayout: layout,
         });
+        setTemplateId(resolved);
+        setSampleLoadedId(template.id);
+        toast.success('Đã áp dụng mẫu CV và lưu nháp.');
       }
-
-      // 2. Fetch complete sample CV data for this template's industry
-      try {
-        const industry = template.category && template.category !== 'all'
-          ? template.category
-          : undefined;
-        const res = await CvService.getSamples(industry);
-
-        // Normalize: API có thể trả { data: [...] } hoặc array trực tiếp
-        const samples: any[] = Array.isArray(res)
-          ? res
-          : Array.isArray(res?.data)
-            ? res.data
-            : res?.data
-              ? [res.data]
-              : [];
-
-        // Ưu tiên sample khớp templateId, fallback sample đầu tiên
-        const sample = samples.find((s: any) =>
-          s.templateId === template.id || s.template_id === template.id
-        ) ?? samples[0];
-
-        if (sample) {
-          if (sample.cvData) setCvData(sample.cvData as CvData);
-
-          if (sample.columnLayout) {
-            const layout = sample.columnLayout as ColumnLayout;
-            // Đảm bảo 'profile' luôn có trong left column (avatar sẽ bị ẩn nếu thiếu)
-            const profileInLeft = layout.left?.includes('profile');
-            const profileInRight = layout.right?.includes('profile');
-            if (!profileInLeft && !profileInRight) {
-              setColumnLayout({
-                left: ['profile', ...(layout.left ?? [])],
-                right: layout.right ?? [],
-              });
-            } else {
-              setColumnLayout(layout);
-            }
-          }
-
-          if (sample.themeConfig) updateTheme(sample.themeConfig as Partial<ThemeConfig>);
-          setSampleLoadedId(template.id);
-        }
-      } catch (sampleErr) {
-        // Không load được sample → vẫn giữ style mẫu đã chọn, bỏ qua lỗi
-        console.warn('[TemplateGallery] Không tải được mẫu CV hoàn chỉnh:', sampleErr);
-      }
+    } catch (sampleErr) {
+      console.warn('[TemplateGallery] Không tải được mẫu CV hoàn chỉnh:', sampleErr);
+      toast.error(formatCvApiError(sampleErr));
     } finally {
       setTimeout(() => setIsApplying(null), 800);
     }
   };
 
   const categoryColor = (cat: string) => CATEGORY_COLOR[cat] || '#64748b';
+  const selectedTemplate = templates.find(t => t.id === templateId);
 
   return (
-    <div className="flex flex-col h-full" id="template-gallery-panel">
+    <div className="flex flex-col h-full min-h-0" id="template-gallery-panel">
 
-      {/* ── Header ────────────────────────────────────────────────── */}
-      <div className="mb-4">
-        <p className="text-[11px] text-gray-400 leading-relaxed">
-          Chọn một mẫu CV phù hợp với ngành nghề của bạn.<br />
-          Nội dung mẫu hoàn chỉnh sẽ được tự động điền vào CV.
-        </p>
+      {/* ── Confirmation Dialog ──────────────────────────────────── */}
+      {confirmTemplate && (
+        <ConfirmDialog
+          templateName={confirmTemplate.name}
+          onConfirm={() => applySample(confirmTemplate)}
+          onCancel={() => setConfirmTemplate(null)}
+        />
+      )}
+
+      {/* ── Header cố định ───────────────────────────────────────── */}
+      <div className="shrink-0">
+      <div className="mb-4 p-3 bg-blue-50 rounded-xl border border-blue-100">
+        <div className="flex items-start gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 shrink-0">
+            <circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" />
+          </svg>
+          <div className="space-y-1">
+            <p className="text-[10px] font-semibold text-blue-700">Click vào mẫu → chỉ đổi màu sắc & font</p>
+            <p className="text-[10px] text-blue-500 leading-relaxed">Bấm <span className="font-bold">"Dùng mẫu này"</span> để điền nội dung CV mẫu vào editor.</p>
+          </div>
+        </div>
       </div>
 
       {/* ── Category Filter Tabs ───────────────────────────────────── */}
@@ -205,7 +338,10 @@ const TemplateGalleryPanel: React.FC = () => {
           {filteredList.length} mẫu {activeCategory !== 'all' ? `ngành ${activeCategory}` : 'tất cả ngành'}
         </p>
       )}
+      </div>
 
+      {/* ── Chỉ danh sách mẫu cuộn ─────────────────────────────────── */}
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain pr-1 -mr-1">
       {/* ── Error state ────────────────────────────────────────────── */}
       {error && (
         <div className="flex flex-col items-center gap-3 py-8 text-center">
@@ -226,14 +362,14 @@ const TemplateGalleryPanel: React.FC = () => {
 
       {/* ── Loading skeletons ─────────────────────────────────────── */}
       {isLoading && (
-        <div className="grid grid-cols-2 gap-3 overflow-y-auto pb-4">
+        <div className="grid grid-cols-2 gap-3 pb-4">
           {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
         </div>
       )}
 
       {/* ── Template Grid ─────────────────────────────────────────── */}
       {!isLoading && !error && (
-        <div className="grid grid-cols-2 gap-3 overflow-y-auto pb-4 flex-1">
+        <div className="grid grid-cols-2 gap-3 pb-4">
           {filteredList.length === 0 ? (
             <div className="col-span-2 flex flex-col items-center gap-3 py-10 text-center">
               <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center text-gray-300">
@@ -260,7 +396,7 @@ const TemplateGalleryPanel: React.FC = () => {
                   onMouseEnter={() => setHoveredId(template.id)}
                   onMouseLeave={() => setHoveredId(null)}
                   onClick={() => handleSelectTemplate(template)}
-                  title={template.name}
+                  title={`${template.name} — Click để áp dụng giao diện`}
                 >
                   {/* Thumbnail */}
                   <div className="aspect-[3/4] relative overflow-hidden bg-gray-50">
@@ -270,27 +406,29 @@ const TemplateGalleryPanel: React.FC = () => {
                         alt={template.name}
                         className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                         onError={(e) => {
-                          // Fallback if image fails to load
                           (e.target as HTMLImageElement).style.display = 'none';
-                          const parent = (e.target as HTMLImageElement).parentElement;
-                          if (parent) {
-                            parent.classList.add('placeholder-active');
-                          }
                         }}
                       />
                     ) : (
                       <PlaceholderThumbnail name={template.name} color={template.defaultConfig.primaryColor} />
                     )}
 
-                    {/* Hover overlay */}
-                    <div className={`absolute inset-0 bg-black/40 flex flex-col items-center justify-center gap-1.5 transition-opacity duration-200 ${hoveredId === template.id && !isSelected ? 'opacity-100' : 'opacity-0'
-                      }`}>
-                      <span className="text-white text-[10px] font-bold px-3 py-1.5 bg-primary rounded-full shadow-lg">
+                    {/* Hover overlay — chỉ hiện khi hover, chưa chọn */}
+                    <div className={`absolute inset-0 bg-black/50 flex flex-col items-center justify-center gap-2 transition-opacity duration-200 ${hoveredId === template.id ? 'opacity-100' : 'opacity-0'}`}>
+                      {/* Nút 1: chỉ đổi giao diện */}
+                      <button
+                        className="text-white text-[9px] font-semibold px-3 py-1.5 bg-white/20 border border-white/40 rounded-full hover:bg-white/30 transition-all backdrop-blur-sm"
+                        onClick={(e) => { e.stopPropagation(); handleSelectTemplate(template); }}
+                      >
+                        Áp dụng giao diện
+                      </button>
+                      {/* Nút 2: điền nội dung mẫu */}
+                      <button
+                        className="text-white text-[9px] font-bold px-3 py-1.5 bg-primary rounded-full shadow-lg hover:bg-primary/90 transition-all"
+                        onClick={(e) => { e.stopPropagation(); handleUseSample(template); }}
+                      >
                         Dùng mẫu này
-                      </span>
-                      <span className="text-white/80 text-[9px] px-2 text-center leading-tight">
-                        Tự động điền nội dung mẫu
-                      </span>
+                      </button>
                     </div>
 
                     {/* Selected badge */}
@@ -340,16 +478,40 @@ const TemplateGalleryPanel: React.FC = () => {
           )}
         </div>
       )}
+      </div>
 
-      {/* ── Currently selected info ───────────────────────────────── */}
-      {templateId && templateId !== 'default_template' && (
-        <div className="mt-auto pt-3 border-t border-gray-100">
+      {/* ── Footer: mẫu đang dùng + nút "Dùng mẫu này" ──────────── */}
+      {selectedTemplate && (
+        <div className="shrink-0 pt-3 border-t border-gray-100 space-y-2">
           <p className="text-[10px] text-gray-400">
             Mẫu đang dùng:{' '}
-            <span className="font-semibold text-primary">
-              {templates.find(t => t.id === templateId)?.name ?? templateId}
-            </span>
+            <span className="font-semibold text-primary">{selectedTemplate.name}</span>
           </p>
+          <button
+            onClick={() => handleUseSample(selectedTemplate)}
+            disabled={!!isApplying}
+            className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-all shadow-sm disabled:opacity-60"
+          >
+            {isApplying === selectedTemplate.id ? (
+              <>
+                <svg className="animate-spin h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Đang tải...
+              </>
+            ) : (
+              <>
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="12" y1="18" x2="12" y2="12" />
+                  <line x1="9" y1="15" x2="15" y2="15" />
+                </svg>
+                Dùng mẫu này (điền nội dung)
+              </>
+            )}
+          </button>
         </div>
       )}
     </div>

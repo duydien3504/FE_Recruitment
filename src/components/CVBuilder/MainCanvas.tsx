@@ -1,12 +1,103 @@
-import React from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import { DndContext, closestCenter } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { useCvStore } from '../../store/cvStore';
+import type { CustomSection, CustomSectionItem } from '../../store/cvStore';
 import { SortableCVBlock } from './SortableCVBlock';
 import { AiAssistantModal } from './AiAssistantModal';
 import { TiptapEditor } from './TiptapEditor';
 import { useCvPagination, A4_HEIGHT_PX } from '../../hooks/useCvPagination';
+import type { CvPageSection } from '../../hooks/useCvPagination';
+import { CUSTOM_SECTION_ICONS } from './CreateCustomSectionModal';
+import CreateCustomSectionModal from './CreateCustomSectionModal';
+
+// ─── Custom Section Item Editor (tách thành component riêng để tránh mất focus) ─
+interface CustomSectionItemEditorProps {
+  item: CustomSectionItem;
+  sectionId: string;
+  isDark: boolean;
+  primaryColor: string;
+  onUpdate: (sectionId: string, itemId: string, updates: Partial<Omit<CustomSectionItem, 'id'>>) => void;
+  onClose: () => void;
+}
+const CustomSectionItemEditor: React.FC<CustomSectionItemEditorProps> = ({
+  item, sectionId, isDark, primaryColor, onUpdate, onClose,
+}) => {
+  const nameRef = useRef<HTMLInputElement>(null);
+
+  // Chỉ focus name input khi component lần đầu mount (không focus lại khi re-render do gõ phím)
+  useEffect(() => {
+    if (nameRef.current) {
+      nameRef.current.focus();
+      // Đặt cursor về cuối chuỗi hiện có
+      const len = nameRef.current.value.length;
+      nameRef.current.setSelectionRange(len, len);
+    }
+  }, []); // [] → chỉ chạy 1 lần khi mount
+
+  const handleChange = useCallback((field: keyof Omit<CustomSectionItem, 'id'>, value: string) => {
+    onUpdate(sectionId, item.id, { [field]: value });
+  }, [sectionId, item.id, onUpdate]);
+
+  const inputBase = `w-full px-2 py-1 rounded-lg border outline-none transition-all text-xs ${
+    isDark
+      ? 'bg-white/10 border-white/20 text-white placeholder:text-white/30 focus:border-white/50'
+      : 'bg-white border-gray-200 text-slate-700 focus:border-primary/50'
+  }`;
+
+  return (
+    <div className="space-y-2">
+      <input
+        ref={nameRef}
+        value={item.name}
+        onChange={e => handleChange('name', e.target.value)}
+        placeholder="Tên (bắt buộc) *"
+        className={`${inputBase} text-sm font-semibold`}
+      />
+      <input
+        value={item.subtitle || ''}
+        onChange={e => handleChange('subtitle', e.target.value)}
+        placeholder="Tổ chức / Đơn vị (tùy chọn)"
+        className={`${inputBase} italic`}
+      />
+      <div className="flex gap-2 items-end">
+        <div className="flex-1">
+          <label className={`block text-[9px] font-semibold mb-0.5 ${isDark ? 'text-white/40' : 'text-gray-400'}`}>Từ tháng</label>
+          <input
+            type="month"
+            value={item.startDate || ''}
+            onChange={e => handleChange('startDate', e.target.value)}
+            className={inputBase}
+          />
+        </div>
+        <div className="flex-1">
+          <label className={`block text-[9px] font-semibold mb-0.5 ${isDark ? 'text-white/40' : 'text-gray-400'}`}>Đến tháng</label>
+          <input
+            type="month"
+            value={item.endDate || ''}
+            onChange={e => handleChange('endDate', e.target.value)}
+            className={inputBase}
+          />
+        </div>
+      </div>
+      <textarea
+        value={item.description || ''}
+        onChange={e => handleChange('description', e.target.value)}
+        placeholder="Mô tả (tùy chọn)"
+        rows={2}
+        className={`${inputBase} resize-none`}
+      />
+      <button
+        onClick={onClose}
+        className="text-[10px] font-semibold hover:underline"
+        style={{ color: primaryColor }}
+      >
+        ✓ Xong
+      </button>
+    </div>
+  );
+};
 
 // ─── Layout Presets theo templateId ──────────────────────────────────────────
 // Mỗi template có bộ thuộc tính visual riêng — không chỉ màu mà còn cả bố cục.
@@ -73,12 +164,72 @@ const DEFAULT_PRESET: TemplateLayoutPreset = {
   sectionHeaderStyle: 'icon-circle',
 };
 
-const MainCanvas: React.FC = () => {
-  const { cvData, updateSection, themeConfig, columnLayout, setColumnLayout, templateId } = useCvStore();
+// ─── CvAvatar ─────────────────────────────────────────────────────────────────
+function getAvatarInitials(name?: string): string {
+  if (!name?.trim()) return '?';
+  const cleaned = name.replace(/^(PGS\.TS\.|TS\.|GS\.|ThS\.|PGS\.|GVC\.)\s*/i, '').trim();
+  const parts = cleaned.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return parts[0][0].toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+const CvAvatar: React.FC<{
+  avatarUrl?: string;
+  fullName?: string;
+  primaryColor: string;
+  size?: number;
+}> = ({ avatarUrl, fullName, primaryColor, size = 160 }) => {
+  const [imgError, setImgError] = React.useState(false);
+  const showInitials = !avatarUrl || imgError;
+  const initials = getAvatarInitials(fullName);
+
+  return (
+    <div
+      className="rounded-full border-4 border-white/20 overflow-hidden flex items-center justify-center"
+      style={{
+        width: size, height: size, flexShrink: 0,
+        backgroundColor: showInitials ? primaryColor : 'transparent',
+        boxShadow: `0 6px 20px ${primaryColor}55`,
+      }}
+    >
+      {showInitials ? (
+        <span style={{ color: '#fff', fontSize: Math.round(size * 0.36), fontWeight: 800, letterSpacing: 1, lineHeight: 1 }}>
+          {initials}
+        </span>
+      ) : (
+        <img
+          src={avatarUrl}
+          alt={fullName || 'Avatar'}
+          className="w-full h-full object-cover"
+          onError={() => setImgError(true)}
+        />
+      )}
+    </div>
+  );
+};
+
+interface MainCanvasProps {
+  /** Khi true: ẩn toàn bộ UI chỉnh sửa (zoom, add/remove buttons, DnD), chỉ hiển thị CV */
+  previewMode?: boolean;
+}
+
+const MainCanvas: React.FC<MainCanvasProps> = ({ previewMode = false }) => {
+  const {
+    cvData, updateSection, themeConfig, columnLayout, setColumnLayout, templateId,
+    addCustomSection, updateCustomSection, deleteCustomSection,
+    addCustomSectionItem, updateCustomSectionItem, deleteCustomSectionItem,
+  } = useCvStore();
   
   // Resolve layout preset dựa theo templateId hiện tại
   const preset: TemplateLayoutPreset = TEMPLATE_LAYOUT_PRESETS[templateId] ?? DEFAULT_PRESET;
   const [zoom, setZoom] = React.useState(100);
+
+  // Custom section modal state
+  const [customModalOpen, setCustomModalOpen] = React.useState(false);
+  const [editingSection, setEditingSection] = React.useState<{ id: string; title: string; icon: string } | null>(null);
+
+  // Custom section item editing state
+  const [editingItem, setEditingItem] = React.useState<{ sectionId: string; itemId: string } | null>(null);
 
   const [aiModalConfig, setAiModalConfig] = React.useState({
     isOpen: false,
@@ -95,7 +246,37 @@ const MainCanvas: React.FC = () => {
     education: { label: 'Học vấn', icon: <><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></> },
     experience: { label: 'Kinh nghiệm', icon: <><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></> },
     projects: { label: 'Dự án', icon: <path d="m8 3 4 8 5-5 5 15H2L8 3z"/> },
-    awards: { label: 'Giải thưởng', icon: <><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></> }
+    awards: { label: 'Giải thưởng', icon: <><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></> },
+    customSections: { label: 'Mục tùy chỉnh', icon: <><path d="M12 5v14"/><path d="M5 12h14"/></> },
+  };
+
+  const handleCreateCustomSection = (title: string, icon: string) => {
+    const newSection: CustomSection = {
+      id: crypto.randomUUID(),
+      title, icon, items: [],
+    };
+    addCustomSection(newSection);
+    // Thêm 'customSections' vào layout nếu chưa có
+    const alreadyInLayout = columnLayout.left.includes('customSections') || columnLayout.right.includes('customSections');
+    if (!alreadyInLayout) {
+      setColumnLayout({ ...columnLayout, right: [...columnLayout.right, 'customSections'] });
+    }
+  };
+
+  const handleEditCustomSection = (title: string, icon: string) => {
+    if (!editingSection) return;
+    updateCustomSection(editingSection.id, { title, icon });
+    setEditingSection(null);
+  };
+
+  const handleAddCustomItem = (sectionId: string) => {
+    const newItem: CustomSectionItem = {
+      id: crypto.randomUUID(),
+      name: '',
+      subtitle: '', startDate: '', endDate: '', description: '',
+    };
+    addCustomSectionItem(sectionId, newItem);
+    setEditingItem({ sectionId, itemId: newItem.id });
   };
 
   const handleZoomIn = () => setZoom(prev => Math.min(prev + 10, 150));
@@ -208,20 +389,153 @@ const MainCanvas: React.FC = () => {
 
   const dynamicFontSize = (getBaseFontSize() * zoom) / 100;
 
-  const renderSection = (sectionId: string, isDark: boolean) => {
+  const renderSection = (sectionId: string, isDark: boolean, itemStart?: number, itemEnd?: number) => {
     const config = SECTION_CONFIGS[sectionId];
     if (!config) return null;
+
+    // ── Custom Sections ───────────────────────────────────────────────────────
+    if (sectionId === 'customSections') {
+      const sections: CustomSection[] = cvData.customSections ?? [];
+      return (
+        <SortableCVBlock key="customSections" id="customSections" onRemove={handleRemoveSection}>
+          <div className="space-y-6">
+            {sections.length === 0 && (
+              <div className={`text-center py-4 ${isDark ? 'text-white/30' : 'text-gray-300'} text-xs italic`}>
+                Chưa có mục tùy chỉnh nào
+              </div>
+            )}
+            {sections.map(section => {
+              const iconDef = CUSTOM_SECTION_ICONS[section.icon] ?? CUSTOM_SECTION_ICONS.default;
+              return (
+                <div key={section.id} className="group/cs">
+                  {/* Section header */}
+                  <div className={`flex items-center gap-2 mb-3 ${isDark ? 'border-b border-white/10 pb-2' : 'border-b-2 pb-2'}`}
+                    style={!isDark ? { borderColor: themeConfig.primaryColor + '44' } : {}}>
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{ backgroundColor: themeConfig.primaryColor }}>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                        fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        {iconDef.svg}
+                      </svg>
+                    </div>
+                    <span className={`font-bold uppercase tracking-wide flex-1 text-sm ${isDark ? 'text-white' : 'text-slate-700'}`}>
+                      {section.title}
+                    </span>
+                    {/* Edit / Delete buttons */}
+                    <div className="flex items-center gap-1 opacity-0 group-hover/cs:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => setEditingSection({ id: section.id, title: section.title, icon: section.icon })}
+                        className="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-primary hover:bg-primary/10 transition-all"
+                        title="Sửa tên mục"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                      </button>
+                      <button
+                        onClick={() => deleteCustomSection(section.id)}
+                        className="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all"
+                        title="Xóa mục này"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Items */}
+                  {section.items.map(item => {
+                    const isEditingThis = editingItem?.sectionId === section.id && editingItem?.itemId === item.id;
+                    return (
+                      <div key={item.id} className={`group/ci relative mb-3 ${isDark ? '' : 'p-2.5 rounded-xl hover:bg-gray-50 border border-transparent hover:border-gray-100 transition-all'}`}>
+                        <button
+                          onClick={() => deleteCustomSectionItem(section.id, item.id)}
+                          className="absolute -right-1.5 -top-1.5 z-20 opacity-0 group-hover/ci:opacity-100 w-5 h-5 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white rounded-full shadow-md transition-all"
+                          title="Xóa mục con này"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                        </button>
+
+                        {isEditingThis ? (
+                          /* Expanded edit form — dùng component riêng để tránh mất focus khi re-render */
+                          <CustomSectionItemEditor
+                            item={item}
+                            sectionId={section.id}
+                            isDark={isDark}
+                            primaryColor={themeConfig.primaryColor}
+                            onUpdate={updateCustomSectionItem}
+                            onClose={() => setEditingItem(null)}
+                          />
+                        ) : (
+                          /* Collapsed display */
+                          <div onClick={() => setEditingItem({ sectionId: section.id, itemId: item.id })} className="cursor-pointer">
+                            <div className="flex justify-between items-start gap-2">
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-sm font-semibold leading-tight ${isDark ? 'text-white' : 'text-slate-700'} ${!item.name ? 'opacity-30 italic' : ''}`}>
+                                  {item.name || 'Chưa nhập tên...'}
+                                </p>
+                                {item.subtitle && (
+                                  <p className={`text-xs italic mt-0.5 ${isDark ? 'text-white/60' : 'text-slate-400'}`} style={{ color: isDark ? undefined : themeConfig.primaryColor }}>
+                                    {item.subtitle}
+                                  </p>
+                                )}
+                                {item.description && (
+                                  <p className={`text-xs mt-1 leading-relaxed ${isDark ? 'text-white/50' : 'text-slate-500'}`}>{item.description}</p>
+                                )}
+                              </div>
+                              {(item.startDate || item.endDate) && (
+                                <span className={`text-[10px] flex-shrink-0 ${isDark ? 'text-white/40' : 'text-slate-400'}`}>
+                                  {item.startDate}{item.startDate && item.endDate ? ' – ' : ''}{item.endDate}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* Add item button */}
+                  <button
+                    onClick={() => handleAddCustomItem(section.id)}
+                    className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border-2 border-dashed text-xs font-semibold transition-all mt-1 ${
+                      isDark
+                        ? 'border-white/20 text-white/40 hover:border-white/40 hover:text-white/60'
+                        : 'border-primary/20 text-primary/60 hover:border-primary/50 hover:text-primary hover:bg-primary/5'
+                    }`}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                    Thêm mục con
+                  </button>
+                </div>
+              );
+            })}
+
+            {/* Add new custom section */}
+            <button
+              onClick={() => setCustomModalOpen(true)}
+              className={`w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl border-2 border-dashed text-xs font-semibold transition-all ${
+                isDark
+                  ? 'border-white/15 text-white/30 hover:border-white/30 hover:text-white/50'
+                  : 'border-gray-200 text-gray-400 hover:border-primary/30 hover:text-primary hover:bg-primary/5'
+              }`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+              Tạo thêm mục mới
+            </button>
+          </div>
+        </SortableCVBlock>
+      );
+    }
 
     if (sectionId === 'profile') {
       return (
         <SortableCVBlock key="profile" id="profile">
           <div className="text-center group/avatar mb-4">
-            <div className="w-40 h-40 mx-auto rounded-full border-4 border-white/20 overflow-hidden mb-4 bg-gray-100 flex items-center justify-center relative">
-              {cvData.personal?.avatarUrl ? (
-                  <img src={cvData.personal.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-              ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-              )}
+            <div className="flex justify-center mb-4">
+              <CvAvatar
+                avatarUrl={cvData.personal?.avatarUrl}
+                fullName={cvData.personal?.fullName}
+                primaryColor={themeConfig.primaryColor}
+                size={160}
+              />
             </div>
             <TiptapEditor 
               value={cvData.personal?.fullName || ''} 
@@ -321,7 +635,11 @@ const MainCanvas: React.FC = () => {
 
     // Dynamic Sections (Education, Experience, etc.)
     const rawItems = cvData[sectionId];
-    const items = Array.isArray(rawItems) ? rawItems : [];
+    const allItems = Array.isArray(rawItems) ? rawItems : [];
+    // Nếu có itemStart/itemEnd (phân trang theo block), chỉ render slice đó
+    const items = (itemStart !== undefined || itemEnd !== undefined)
+      ? allItems.slice(itemStart ?? 0, itemEnd ?? allItems.length)
+      : allItems;
     // Sidebar sáng (Marketing/IT Minimal) dùng chữ đen
     const isSidebarLight = preset.sidebarBg.startsWith('#e') || preset.sidebarBg.startsWith('#f');
     const textColor = isDark ? (isSidebarLight ? 'text-gray-800' : 'text-white') : 'text-gray-800';
@@ -468,19 +786,27 @@ const MainCanvas: React.FC = () => {
   };
 
   // ── Phân trang ─────────────────────────────────────────────────────────────
-  const { pages, measureRef } = useCvPagination(columnLayout.left, columnLayout.right);
-
-  // Wrapper để đo chiều cao của từng section block
-  const MeasuredSection = ({ sectionId, isDark }: { sectionId: string; isDark: boolean }) => (
-    <div ref={measureRef(sectionId)}>
-      {renderSection(sectionId, isDark)}
-    </div>
-  );
+  const { pages, measureRef } = useCvPagination(columnLayout.left, columnLayout.right, cvData);
 
   return (
-    <div className="flex-1 min-w-[1100px] shrink-0 bg-gray-200 overflow-y-auto flex flex-col items-center py-6 px-4 scroll-smooth relative">
-       {/* Zoom Controls */}
-       <div className="fixed bottom-10 right-10 z-50 flex flex-col space-y-2 bg-white shadow-xl border border-gray-100 p-2 rounded-2xl">
+    <>
+    {/* Create / Edit custom section modals */}
+    <CreateCustomSectionModal
+      isOpen={customModalOpen}
+      onClose={() => setCustomModalOpen(false)}
+      onCreate={handleCreateCustomSection}
+    />
+    <CreateCustomSectionModal
+      isOpen={!!editingSection}
+      onClose={() => setEditingSection(null)}
+      onCreate={handleEditCustomSection}
+      editSection={editingSection}
+    />
+
+    <div className={`flex-1 min-h-0 ${previewMode ? '' : 'min-w-[1100px]'} shrink-0 bg-gray-200 overflow-y-auto flex flex-col items-center pt-4 pb-2 px-4 scroll-smooth relative`}
+    >
+       {/* Zoom Controls — ẩn khi previewMode */}
+       <div className={`fixed bottom-10 right-10 z-50 flex flex-col space-y-2 bg-white shadow-xl border border-gray-100 p-2 rounded-2xl ${previewMode ? 'hidden' : ''}`}>
           <button onClick={handleZoomIn} className="w-10 h-10 flex items-center justify-center hover:bg-gray-100 rounded-xl transition-colors text-gray-600" title="Phóng to">
              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
           </button>
@@ -494,16 +820,16 @@ const MainCanvas: React.FC = () => {
           </button>
        </div>
 
-       {/* Page count badge */}
-       {pages.length > 1 && (
+       {/* Page count badge — ẩn khi previewMode */}
+       {pages.length > 1 && !previewMode && (
          <div className="mb-4 flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 text-xs font-semibold px-4 py-2 rounded-full shadow-sm">
            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
            CV của bạn có {pages.length} trang — các section tự động phân trang
          </div>
        )}
 
-       {/* ── Toàn bộ section (INVISIBLE - chỉ để đo chiều cao) ── */}
-       <div style={{ position: 'absolute', visibility: 'hidden', pointerEvents: 'none', top: 0, left: 0, width: '270mm', zIndex: -1 }}>
+       {/* ── Toàn bộ section (INVISIBLE - chỉ để đo chiều cao, đặt ngoài viewport để không tạo khoảng trắng cuộn) ── */}
+       <div style={{ position: 'fixed', visibility: 'hidden', pointerEvents: 'none', top: -9999, left: 0, width: '270mm', zIndex: -1 }}>
          <div style={{ backgroundColor: preset.sidebarBg, width: preset.sidebarWidth, padding: '32px' }}>
            {columnLayout.left.map(sid => (
              <div key={sid} ref={measureRef(sid)}>{renderSection(sid, true)}</div>
@@ -517,6 +843,8 @@ const MainCanvas: React.FC = () => {
        </div>
 
        {/* ── Render từng trang A4 ── */}
+       {/* previewMode: bọc bằng div không tương tác, nhưng scroll vẫn hoạt động ở outer div */}
+       <div style={previewMode ? { pointerEvents: 'none', userSelect: 'none', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' } : { width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
        <DndContext
          collisionDetection={closestCenter}
          onDragOver={handleDragOver}
@@ -576,15 +904,20 @@ const MainCanvas: React.FC = () => {
                      style={{
                        backgroundColor: preset.sidebarBg,
                        width: preset.sidebarWidth,
-                       color: (preset.sidebarBg.startsWith('#e') || preset.sidebarBg.startsWith('#f')) ? '#1a1a1a' : '#ffffff',
+                       color: themeConfig.textColor || ((preset.sidebarBg.startsWith('#e') || preset.sidebarBg.startsWith('#f')) ? '#1a1a1a' : '#ffffff'),
                        minHeight: `${A4_HEIGHT_PX}px`,
                      }}
                    >
                      <SortableContext items={columnLayout.left} strategy={verticalListSortingStrategy}>
-                       {page.leftSections.map((sectionId) => {
-                         if (preset.layoutStyle === 'hero-top' && sectionId === 'profile' && pageIndex === 0) return null;
-                         return <MeasuredSection key={sectionId} sectionId={sectionId} isDark={true} />;
-                       })}
+                     {page.leftSections.map((sec: CvPageSection) => {
+                        if (preset.layoutStyle === 'hero-top' && sec.id === 'profile' && pageIndex === 0) return null;
+                        const key = `${sec.id}_${sec.itemStart ?? 'all'}`;
+                        return (
+                          <div key={key} ref={sec.itemStart === undefined ? measureRef(sec.id) : undefined}>
+                            {renderSection(sec.id, true, sec.itemStart, sec.itemEnd)}
+                          </div>
+                        );
+                      })}
                        {page.leftSections.length === 0 && pageIndex === 0 && (
                          <div className="h-40 border-2 border-dashed border-white/10 rounded-xl flex items-center justify-center text-white/20 text-xs text-center">Cột Sidebar</div>
                        )}
@@ -594,12 +927,17 @@ const MainCanvas: React.FC = () => {
                    {/* MAIN CONTENT COL */}
                    <div
                      className={`flex-1 ${preset.mainPadding} space-y-10 transition-colors duration-500`}
-                     style={{ backgroundColor: preset.mainBg, minHeight: `${A4_HEIGHT_PX}px` }}
+                     style={{ backgroundColor: preset.mainBg, color: themeConfig.bodyTextColor, minHeight: `${A4_HEIGHT_PX}px` }}
                    >
                      <SortableContext items={columnLayout.right} strategy={verticalListSortingStrategy}>
-                       {page.rightSections.map((sectionId) => (
-                         <MeasuredSection key={sectionId} sectionId={sectionId} isDark={false} />
-                       ))}
+                      {page.rightSections.map((sec: CvPageSection) => {
+                        const key = `${sec.id}_${sec.itemStart ?? 'all'}`;
+                        return (
+                          <div key={key} ref={sec.itemStart === undefined ? measureRef(sec.id) : undefined}>
+                            {renderSection(sec.id, false, sec.itemStart, sec.itemEnd)}
+                          </div>
+                        );
+                      })}
                        {page.rightSections.length === 0 && pageIndex === 0 && (
                          <div className="h-40 border-2 border-dashed border-gray-100 rounded-xl flex items-center justify-center text-gray-300 text-xs text-center">Cột Chính Nội Dung</div>
                        )}
@@ -624,6 +962,7 @@ const MainCanvas: React.FC = () => {
            </div>
          ))}
        </DndContext>
+       </div>
 
        <AiAssistantModal
           isOpen={aiModalConfig.isOpen}
@@ -642,6 +981,7 @@ const MainCanvas: React.FC = () => {
           }}
        />
     </div>
+    </>
   );
 };
 

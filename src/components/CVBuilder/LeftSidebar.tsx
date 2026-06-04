@@ -1,7 +1,10 @@
 import React, { useState, useRef } from 'react';
 import { useCvStore } from '../../store/cvStore';
+import type { CustomSection } from '../../store/cvStore';
 import { CvService } from '../../services/cv.service';
 import TemplateGalleryPanel from './TemplateGalleryPanel';
+import SampleLibraryPanel from './SampleLibraryPanel';
+import CreateCustomSectionModal from './CreateCustomSectionModal';
 
 interface CustomFont {
   name: string;
@@ -9,8 +12,9 @@ interface CustomFont {
 }
 
 const LeftSidebar: React.FC = () => {
-  const { themeConfig, updateTheme, cvData, setCvData, updateSection, syncAllColors, columnLayout, setColumnLayout } = useCvStore();
+  const { themeConfig, updateTheme, cvData, setCvData, updateSection, syncAllColors, columnLayout, setColumnLayout, addCustomSection } = useCvStore();
   const [activeTab, setActiveTab] = useState('design');
+  const [customSectionModalOpen, setCustomSectionModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncColorPrompt, setSyncColorPrompt] = useState<string | null>(null);
   const [selectedFontSize, setSelectedFontSize] = useState('14');
@@ -167,7 +171,25 @@ const LeftSidebar: React.FC = () => {
     }
   };
 
+  const handleCreateCustomSection = (title: string, icon: string) => {
+    const newSection: CustomSection = {
+      id: crypto.randomUUID(),
+      title, icon, items: [],
+    };
+    addCustomSection(newSection);
+    const alreadyInLayout = columnLayout.left.includes('customSections') || columnLayout.right.includes('customSections');
+    if (!alreadyInLayout) {
+      setColumnLayout({ ...columnLayout, right: [...columnLayout.right, 'customSections'] });
+    }
+  };
+
   return (
+    <>
+    <CreateCustomSectionModal
+      isOpen={customSectionModalOpen}
+      onClose={() => setCustomSectionModalOpen(false)}
+      onCreate={handleCreateCustomSection}
+    />
     <div className="flex h-full bg-white border-r shadow-sm overflow-hidden rounded-l-2xl shrink-0">
       {/* Vertical Icon Bar */}
       <div className="w-20 bg-gray-50 border-r flex flex-col py-4 items-center space-y-4">
@@ -188,14 +210,17 @@ const LeftSidebar: React.FC = () => {
       </div>
 
       {/* Dynamic Content Panel */}
-      <div className="w-80 p-6 overflow-y-auto">
-        <div className="flex items-center justify-between mb-8">
-          <h2 className="text-xl font-bold text-gray-800">{tabs.find(t => t.id === activeTab)?.label}</h2>
-          <button onClick={() => setActiveTab('design')} className="text-gray-400 hover:text-gray-600">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
-          </button>
+      <div className="w-80 flex flex-col min-h-0 overflow-hidden self-stretch">
+        <div className="shrink-0 px-6 pt-6 pb-2">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-gray-800">{tabs.find(t => t.id === activeTab)?.label}</h2>
+            <button onClick={() => setActiveTab('design')} className="text-gray-400 hover:text-gray-600">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+            </button>
+          </div>
         </div>
 
+        <div className={`flex-1 min-h-0 px-6 pb-6 ${activeTab === 'library' || activeTab === 'templates' ? 'overflow-hidden flex flex-col' : 'overflow-y-auto overscroll-y-contain'}`}>
         {activeTab === 'design' && (
           <div className="space-y-8">
             {/* Font Family */}
@@ -452,6 +477,18 @@ const LeftSidebar: React.FC = () => {
         {activeTab === 'add' && (
           <div className="space-y-4">
             <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 underline">Click để thêm vào CV</label>
+            {/* Nút tạo mục tùy chỉnh */}
+            <button
+              onClick={() => setCustomSectionModalOpen(true)}
+              className="w-full flex items-center p-4 rounded-xl border-2 border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 hover:border-primary/60 transition-all text-left group"
+            >
+              <span className="text-xl mr-4">✨</span>
+              <div className="flex-1">
+                <span className="text-sm font-semibold text-primary">Tạo mục tùy chỉnh</span>
+                <p className="text-[10px] text-primary/60 font-medium">Chứng chỉ, Sở thích, Ngôn ngữ...</p>
+              </div>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="ml-auto text-primary/50 group-hover:text-primary"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+            </button>
             {[
               { id: 'experience', label: 'Kinh nghiệm làm việc', icon: '💼' },
               { id: 'education', label: 'Học vấn', icon: '🎓' },
@@ -505,10 +542,11 @@ const LeftSidebar: React.FC = () => {
           </div>
         )}
 
-        {/* Template Gallery — tab 'Đổi mẫu CV' và 'Thư viện CV' đều dùng chung 1 component */}
-        {(activeTab === 'templates' || activeTab === 'library') && (
-          <TemplateGalleryPanel />
-        )}
+        {/* Đổi mẫu CV — chỉ thay đổi giao diện */}
+        {activeTab === 'templates' && <TemplateGalleryPanel />}
+
+        {/* Thư viện mẫu CV — xem & dùng mẫu hoàn chỉnh */}
+        {activeTab === 'library' && <SampleLibraryPanel />}
 
         {/* Layout tab — placeholder (chưa implement) */}
         {activeTab === 'layout' && (
@@ -623,8 +661,10 @@ const LeftSidebar: React.FC = () => {
             </div>
           </div>
         )}
+        </div>
       </div>
     </div>
+    </>
   );
 };
 

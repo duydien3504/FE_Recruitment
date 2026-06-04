@@ -8,10 +8,28 @@ export interface BlockData {
   [key: string]: any;
 }
 
+// ─── Custom Section ───────────────────────────────────────────────────────────
+export interface CustomSectionItem {
+  id: string;
+  name: string;
+  subtitle?: string;
+  startDate?: string;
+  endDate?: string;
+  description?: string;
+}
+
+export interface CustomSection {
+  id: string;
+  title: string;
+  icon: string;
+  items: CustomSectionItem[];
+}
+
 export interface CvData {
   experience?: BlockData[];
   education?: BlockData[];
   skills?: any;
+  customSections?: CustomSection[];
   [key: string]: any;
 }
 
@@ -23,6 +41,8 @@ export interface ThemeConfig {
   lineSpacing: number;
   charSpacing: number;
   background?: string;
+  textColor?: string;
+  bodyTextColor?: string;
 }
 
 export interface ColumnLayout {
@@ -34,18 +54,26 @@ interface CvState {
   cvData: CvData;
   templateId: string;
   themeConfig: ThemeConfig;
-  columnLayout: ColumnLayout; // Added Column Layout
+  columnLayout: ColumnLayout;
   atsScore: number;
-  
-  // Actions
+
+  // Standard actions
   setCvData: (data: CvData) => void;
   setTemplateId: (id: string) => void;
   setAtsScore: (score: number) => void;
   updateTheme: (config: Partial<ThemeConfig>) => void;
   updateSection: (section: string, data: any) => void;
-  setColumnLayout: (layout: ColumnLayout) => void; // Added Action
+  setColumnLayout: (layout: ColumnLayout) => void;
   reorderBlocks: (section: string, fromIndex: number, toIndex: number) => void;
   syncAllColors: (color: string) => void;
+
+  // Custom sections actions
+  addCustomSection: (section: CustomSection) => void;
+  updateCustomSection: (id: string, updates: Partial<Omit<CustomSection, 'id' | 'items'>>) => void;
+  deleteCustomSection: (id: string) => void;
+  addCustomSectionItem: (sectionId: string, item: CustomSectionItem) => void;
+  updateCustomSectionItem: (sectionId: string, itemId: string, updates: Partial<Omit<CustomSectionItem, 'id'>>) => void;
+  deleteCustomSectionItem: (sectionId: string, itemId: string) => void;
 }
 
 const applyColorToHtml = (html: any, color: string): any => {
@@ -110,6 +138,61 @@ export const useCvStore = create<CvState>((set) => ({
   }),
   
   setAtsScore: (score) => set({ atsScore: score }),
+
+  // ── Custom sections ─────────────────────────────────────────────────────────
+  addCustomSection: (section) => set((state) => ({
+    cvData: {
+      ...state.cvData,
+      customSections: [...(state.cvData.customSections ?? []), section],
+    },
+  })),
+
+  updateCustomSection: (id, updates) => set((state) => ({
+    cvData: {
+      ...state.cvData,
+      customSections: (state.cvData.customSections ?? []).map(s =>
+        s.id === id ? { ...s, ...updates } : s
+      ),
+    },
+  })),
+
+  deleteCustomSection: (id) => set((state) => ({
+    cvData: {
+      ...state.cvData,
+      customSections: (state.cvData.customSections ?? []).filter(s => s.id !== id),
+    },
+  })),
+
+  addCustomSectionItem: (sectionId, item) => set((state) => ({
+    cvData: {
+      ...state.cvData,
+      customSections: (state.cvData.customSections ?? []).map(s =>
+        s.id === sectionId ? { ...s, items: [...s.items, item] } : s
+      ),
+    },
+  })),
+
+  updateCustomSectionItem: (sectionId, itemId, updates) => set((state) => ({
+    cvData: {
+      ...state.cvData,
+      customSections: (state.cvData.customSections ?? []).map(s =>
+        s.id === sectionId
+          ? { ...s, items: s.items.map(it => it.id === itemId ? { ...it, ...updates } : it) }
+          : s
+      ),
+    },
+  })),
+
+  deleteCustomSectionItem: (sectionId, itemId) => set((state) => ({
+    cvData: {
+      ...state.cvData,
+      customSections: (state.cvData.customSections ?? []).map(s =>
+        s.id === sectionId
+          ? { ...s, items: s.items.filter(it => it.id !== itemId) }
+          : s
+      ),
+    },
+  })),
 
   syncAllColors: (color) => set((state) => {
     const newCvData = { ...state.cvData };

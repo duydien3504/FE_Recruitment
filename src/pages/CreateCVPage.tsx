@@ -15,11 +15,10 @@ import {
   resolveCvTemplateIdForSave
 } from '../services/cv.service';
 import { toast } from 'sonner';
+import { downloadBlob } from '../utils/downloadBlob';
 
-// ─── CV Preview Modal ──────────────────────────────────────────────────────────
+// ─── CV Preview Modal — render MainCanvas previewMode (y hệt canvas, chỉ đọc) ──
 const PreviewModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
-  const { cvData, themeConfig, columnLayout } = useCvStore();
-
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     if (isOpen) {
@@ -34,118 +33,12 @@ const PreviewModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOp
 
   if (!isOpen) return null;
 
-  const html = (s: string) => ({ __html: s || '' });
-
-  const skillsHtml = typeof cvData.skills === 'string'
-    ? cvData.skills
-    : Array.isArray(cvData.skills) && cvData.skills.length > 0
-      ? cvData.skills.map((s: any) => `<span style="display:inline-block;background:rgba(255,255,255,0.12);border-radius:4px;padding:2px 8px;margin:2px;font-size:9px">${s.name || s}</span>`).join('')
-      : '<span style="opacity:0.3;font-size:10px">Chưa có kỹ năng</span>';
-
-  const sectionLabels: Record<string, string> = {
-    education: 'HỌC VẤN', experience: 'KINH NGHIỆM',
-    projects: 'DỰ ÁN', awards: 'GIẢI THƯỞNG'
-  };
-
-  const renderSection = (sectionId: string, isDark: boolean) => {
-    const pri = themeConfig.primaryColor;
-
-    if (sectionId === 'profile') return (
-      <div key="profile" style={{ textAlign: 'center', marginBottom: 24 }}>
-        <div style={{ width: 100, height: 100, borderRadius: '50%', margin: '0 auto 12px', overflow: 'hidden', background: 'rgba(255,255,255,0.1)', border: `3px solid ${pri}`, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {cvData.personal?.avatarUrl
-            ? <img src={cvData.personal.avatarUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
-            : <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
-          }
-        </div>
-        <p style={{ fontSize: 18, fontWeight: 800, color: '#fff', textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 4px' }}
-          dangerouslySetInnerHTML={html(cvData.personal?.fullName || '<span style="opacity:0.3">Chưa có tên</span>')} />
-        <p style={{ fontSize: 10, color: pri, fontStyle: 'italic', margin: 0 }}
-          dangerouslySetInnerHTML={html(cvData.personal?.title || '')} />
-      </div>
-    );
-
-    if (sectionId === 'contact') return (
-      <div key="contact" style={{ marginBottom: 18 }}>
-        <p style={{ fontSize: 8, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: pri, borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 4, marginBottom: 10 }}>LIÊN HỆ</p>
-        {[
-          { v: cvData.personal?.phoneNumber, icon: '📞' },
-          { v: cvData.personal?.email, icon: '✉️' },
-          { v: cvData.personal?.address, icon: '📍' },
-        ].filter(i => i.v).map((i, idx) => (
-          <div key={idx} style={{ display: 'flex', gap: 6, alignItems: 'flex-start', marginBottom: 6 }}>
-            <span style={{ fontSize: 9, lineHeight: 1.6 }}>{i.icon}</span>
-            <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.8)', lineHeight: 1.5 }}>{i.v}</span>
-          </div>
-        ))}
-      </div>
-    );
-
-    if (sectionId === 'about') return (
-      <div key="about" style={{ marginBottom: 18 }}>
-        <p style={{ fontSize: 8, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: pri, borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 4, marginBottom: 8 }}>MỤC TIÊU</p>
-        <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.8)', lineHeight: 1.6, fontStyle: 'italic' }}
-          dangerouslySetInnerHTML={html(cvData.about || '<span style="opacity:0.3">Chưa có nội dung</span>')} />
-      </div>
-    );
-
-    if (sectionId === 'skills') return (
-      <div key="skills" style={{ marginBottom: 18 }}>
-        <p style={{ fontSize: 8, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: pri, borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 4, marginBottom: 8 }}>KỸ NĂNG</p>
-        <div dangerouslySetInnerHTML={html(skillsHtml)} />
-      </div>
-    );
-
-    const raw = cvData[sectionId];
-    const items: any[] = Array.isArray(raw) ? raw : [];
-    const labelRaw = cvData.customLabels?.[sectionId] || sectionLabels[sectionId] || sectionId.toUpperCase();
-
-    return (
-      <div key={sectionId} style={{ marginBottom: isDark ? 18 : 28 }}>
-        {isDark ? (
-          <p style={{ fontSize: 8, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: pri, borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 4, marginBottom: 10 }}
-            dangerouslySetInnerHTML={html(labelRaw)} />
-        ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-            <div style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: pri, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2z" /><path d="M7 7h.01" /></svg>
-            </div>
-            <h3 style={{ fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1, color: '#1e293b', margin: 0 }}
-              dangerouslySetInnerHTML={html(labelRaw)} />
-          </div>
-        )}
-        {items.length === 0
-          ? <p style={{ fontSize: 9, opacity: 0.25, fontStyle: 'italic', color: isDark ? '#fff' : '#000' }}>Chưa có dữ liệu</p>
-          : items.map((item: any) => (
-            <div key={item.id} style={{ marginBottom: 12, paddingBottom: 10, borderBottom: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #f1f5f9' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: isDark ? 10 : 12, fontWeight: 700, color: isDark ? '#fff' : '#1e293b' }}
-                    dangerouslySetInnerHTML={html(item.title || item.school || '')} />
-                  <div style={{ fontSize: isDark ? 8 : 10, fontStyle: 'italic', color: isDark ? pri : '#64748b', marginTop: 2 }}
-                    dangerouslySetInnerHTML={html(item.degree || item.company || '')} />
-                </div>
-                {item.period && <div style={{ fontSize: 8, color: isDark ? 'rgba(255,255,255,0.4)' : '#94a3b8', flexShrink: 0 }}>{item.period}</div>}
-              </div>
-              {item.description && (
-                <div style={{ fontSize: isDark ? 8 : 10, color: isDark ? 'rgba(255,255,255,0.7)' : '#475569', marginTop: 5, lineHeight: 1.6 }}
-                  dangerouslySetInnerHTML={html(item.description)} />
-              )}
-            </div>
-          ))
-        }
-      </div>
-    );
-  };
-
   return (
-    <div
-      style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(2,6,23,0.9)', backdropFilter: 'blur(10px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
-    >
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(2,6,23,0.92)', backdropFilter: 'blur(12px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Top bar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 24px', background: 'rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 24px', background: 'rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: 500 }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
           Xem trước CV — Chỉ đọc
         </div>
         <button
@@ -156,35 +49,9 @@ const PreviewModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOp
         </button>
       </div>
 
-      {/* Scrollable CV area */}
-      <div style={{ flex: 1, overflow: 'auto', display: 'flex', justifyContent: 'center', alignItems: 'flex-start', padding: '32px 24px 48px' }}>
-        {/* CV Paper — fixed A4 width, auto-scale via transform */}
-        <div
-          style={{
-            width: 794,    /* 210mm ≈ 794px at 96dpi */
-            minHeight: 1123, /* 297mm ≈ 1123px */
-            background: '#fff',
-            boxShadow: '0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05)',
-            borderRadius: 2,
-            fontFamily: `'${themeConfig.fontFamily}', sans-serif`,
-            display: 'flex',
-            overflow: 'hidden',
-            transformOrigin: 'top center',
-            transform: 'scale(0.75)',
-            marginBottom: -280,  /* compensate scale shrinkage */
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Cột Trái (Dark Sidebar) */}
-          <div style={{ width: 270, flexShrink: 0, background: '#2d3e50', color: '#fff', padding: '28px 18px', overflowY: 'auto' }}>
-            {columnLayout.left.map((sid: string) => renderSection(sid, true))}
-          </div>
-
-          {/* Cột Phải (Main Content) */}
-          <div style={{ flex: 1, padding: '32px 24px', background: '#fff', overflowY: 'auto' }}>
-            {columnLayout.right.map((sid: string) => renderSection(sid, false))}
-          </div>
-        </div>
+      {/* CV Canvas — render y hệt main canvas, chỉ đọc (pointer-events: none trong previewMode) */}
+      <div style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
+        <MainCanvas previewMode />
       </div>
     </div>
   );
@@ -213,6 +80,49 @@ const CreateCVPage: React.FC = () => {
     console.log('✅ Chúc mừng! CV Store đã khởi tạo thành công.');
     console.log('📦 Current State Injection:', { cvData, themeConfig, atsScore, columnLayout });
   }, [cvData, themeConfig, atsScore, columnLayout]);
+
+  // Load Google Fonts khi fontFamily thay đổi
+  useEffect(() => {
+    const GOOGLE_FONTS: Record<string, string> = {
+      'Inter': 'Inter:wght@400;500;600;700',
+      'Roboto': 'Roboto:wght@400;500;700',
+      'Montserrat': 'Montserrat:wght@400;500;600;700',
+      'Lato': 'Lato:wght@400;700',
+      'Merriweather': 'Merriweather:wght@400;700',
+      'Playfair Display': 'Playfair+Display:wght@400;600;700',
+      'Fira Code': 'Fira+Code:wght@400;500;600',
+      'Be Vietnam Pro': 'Be+Vietnam+Pro:wght@400;500;600;700',
+      'Open Sans': 'Open+Sans:wght@400;500;600;700',
+      'Poppins': 'Poppins:wght@400;500;600;700',
+      'DM Sans': 'DM+Sans:wght@400;500;700',
+      'Plus Jakarta Sans': 'Plus+Jakarta+Sans:wght@400;500;600;700',
+      'Source Sans 3': 'Source+Sans+3:wght@400;600;700',
+      'Work Sans': 'Work+Sans:wght@400;500;600;700',
+      'Barlow': 'Barlow:wght@400;500;600;700',
+      'Raleway': 'Raleway:wght@400;500;600;700',
+      'Nunito': 'Nunito:wght@400;500;600;700',
+      'Outfit': 'Outfit:wght@400;500;600;700',
+      'Lexend': 'Lexend:wght@400;500;600;700',
+      'Josefin Sans': 'Josefin+Sans:wght@400;600;700',
+      'Space Grotesk': 'Space+Grotesk:wght@400;500;600;700',
+      'Sora': 'Sora:wght@400;500;600;700',
+      'Lora': 'Lora:wght@400;600;700',
+      'Source Serif 4': 'Source+Serif+4:wght@400;600;700',
+      'EB Garamond': 'EB+Garamond:wght@400;500;600;700',
+      'Libre Baskerville': 'Libre+Baskerville:wght@400;700',
+      'Crimson Text': 'Crimson+Text:wght@400;600;700',
+    };
+    const font = themeConfig.fontFamily;
+    const slug = GOOGLE_FONTS[font];
+    if (!slug) return;
+    const id = `gfont-${font.replace(/\s+/g, '-').toLowerCase()}`;
+    if (document.getElementById(id)) return;
+    const link = document.createElement('link');
+    link.id = id;
+    link.rel = 'stylesheet';
+    link.href = `https://fonts.googleapis.com/css2?family=${slug}&display=swap`;
+    document.head.appendChild(link);
+  }, [themeConfig.fontFamily]);
 
   // Tải template id + (tuỳ chọn) bản nháp. GET /cv-builder mặc định tắt — xem cvBuilderFlags.ts
   useEffect(() => {
@@ -287,24 +197,23 @@ const CreateCVPage: React.FC = () => {
     setIsExporting(true);
     try {
       const resolved = await resolveCvTemplateIdForSave(templateId);
-      setTemplateId(resolved);
-      const response = await CvService.exportCv({
+      await CvService.updateDraft({
         cvData,
         themeConfig,
+        templateId: resolved,
         columnLayout,
-        templateId: resolved
       });
-      const downloadUrl = window.URL.createObjectURL(new Blob([response]));
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.setAttribute('download', 'StitchRecruit_CV_Export.pdf');
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(downloadUrl);
+      const blob = await CvService.exportCv({
+        cvData,
+        themeConfig,
+        templateId: resolved,
+        columnLayout,
+      });
+      downloadBlob(blob, 'StitchRecruit_CV_Export.pdf');
+      toast.success('Đã tải xuống PDF.');
     } catch (err) {
-      console.error("Lỗi xuất PDF:", err);
-      toast.error("Lỗi xuất PDF. Vui lòng kiểm tra lại dịch vụ Backend.");
+      console.error('Lỗi xuất PDF:', err);
+      toast.error(formatCvApiError(err));
     } finally {
       setIsExporting(false);
     }
@@ -368,7 +277,7 @@ const CreateCVPage: React.FC = () => {
         </Link>
       </div>
 
-      <div className="hidden lg:block">
+      <div className="hidden lg:flex lg:flex-col h-screen overflow-hidden">
         {/* Sub-header cho CV Builder */}
         <div className="fixed top-20 left-0 w-full bg-white z-40 border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm">
           <div className="flex items-center space-x-4">
@@ -448,7 +357,7 @@ const CreateCVPage: React.FC = () => {
           </div>
         </div>
 
-        <main className="pt-36 flex p-4 shadow-inner min-h-[calc(100vh-80px)] overflow-x-auto"
+        <main className="flex-1 min-h-0 pt-36 flex p-4 shadow-inner overflow-hidden items-stretch"
           style={{
             '--cv-primary-color': themeConfig.primaryColor,
             '--cv-font-family': themeConfig.fontFamily
